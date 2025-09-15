@@ -1,7 +1,11 @@
-import { Metadata } from "next";
+"use client";
+import { useEffect, useState } from "react";
 import { notFound } from "next/navigation";
 import Image from "next/image";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import StructuredData from "../../../components/StructuredData";
+import PlaceDetailTabs from "../../../components/PlaceDetailTabs";
 
 interface PlaceItem {
   id: string;
@@ -17,88 +21,73 @@ interface PlaceItem {
     safety: number;
     liked: number;
   };
-  raw: Record<string, string>;
+  rawScores: {
+    aestheticScore: number;
+    socialMediaFriendliness: string;
+    funFactor?: string;
+    crowdVibe: string;
+    ambianceAndInteriorComfort: string;
+    communityVibe: string;
+    safety: string;
+    inclusionForeigners: string;
+    racismFreeEnvironment: string;
+    lighting: string;
+    musicQualityAndVolume: string;
+    wifiSpeedAndReliability: string;
+    laptopWorkFriendliness: string;
+    valueForMoney: string;
+    foodQualityAndTaste: string;
+    drinkQualityAndSelection: string;
+    cleanlinessAndHygiene: string;
+    serviceSpeed: string;
+    staffFriendliness: string;
+    seatingComfort: string;
+    noiseLevel: string;
+    temperatureComfort: string;
+    availabilityOfPowerOutlets: string;
+    menuClarityAndUsability: string;
+    waitTimes: string;
+    easeOfReservations: string;
+    crowdDensity: string;
+    lineOfSight: string;
+    foodSafety: string;
+    proactiveService: string;
+    airQuality: string;
+    restroomCleanliness: string;
+    paymentConvenience: string;
+    walkabilityAccessibility: string;
+  };
+  rank: number;
 }
 
 interface PlacePageProps {
   params: { slug: string };
 }
 
-async function getPlaceData(slug: string): Promise<PlaceItem | null> {
-  try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://cafefinder-hyd.vercel.app'}/api/places`, {
-      cache: 'force-cache'
-    });
-    const data = await response.json();
-    const place = data.items?.find((item: PlaceItem) => item.slug === slug);
-    return place || null;
-  } catch (error) {
-    console.error('Error fetching place data:', error);
-    return null;
-  }
-}
 
-export async function generateMetadata({ params }: PlacePageProps): Promise<Metadata> {
-  const place = await getPlaceData(params.slug);
-  
-  if (!place) {
-    return {
-      title: "Place Not Found | CafeHopper",
-      description: "The requested place could not be found.",
-    };
+
+export default function PlacePage({ params }: PlacePageProps) {
+  const placeData = useQuery(api.places.getPlaceBySlug, { slug: params.slug });
+
+  if (!placeData && placeData !== null) {
+    return <div className="text-center py-8">Loading...</div>;
   }
 
-  const title = `${place.name} - ${place.area} | CafeHopper`;
-  const description = `Discover ${place.name} in ${place.area}, Hyderabad. ${place.type} with ${place.scores.overall}% overall rating. Perfect for food, work, and hangouts.`;
-
-  return {
-    title,
-    description,
-    keywords: [
-      place.name,
-      place.area,
-      place.type,
-      "Hyderabad",
-      "cafe",
-      "restaurant",
-      "bar",
-      "pub",
-      "food",
-      "dining"
-    ],
-    openGraph: {
-      title,
-      description,
-      url: `https://cafefinder-hyd.vercel.app/place/${params.slug}`,
-      siteName: "CafeHopper",
-      images: [
-        {
-          url: place.image,
-          width: 800,
-          height: 600,
-          alt: `${place.name} in ${place.area}, Hyderabad`,
-        },
-      ],
-      type: "website",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [place.image],
-    },
-    alternates: {
-      canonical: `/place/${params.slug}`,
-    },
-  };
-}
-
-export default async function PlacePage({ params }: PlacePageProps) {
-  const place = await getPlaceData(params.slug);
-
-  if (!place) {
+  if (!placeData) {
     notFound();
   }
+
+  const place: PlaceItem = {
+    id: placeData._id,
+    slug: placeData.slug,
+    name: placeData.name,
+    area: placeData.area,
+    type: placeData.type,
+    image: placeData.image || "https://picsum.photos/800/600",
+    scores: placeData.scores,
+    rawScores: placeData.rawScores,
+    rank: placeData.rank
+  };
 
   const structuredData = {
     "@context": "https://schema.org",
@@ -164,36 +153,8 @@ export default async function PlacePage({ params }: PlacePageProps) {
               </div>
             </div>
 
-            {/* Scores Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-              <div className="text-center p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
-                <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                  {place.scores.cost}/5
-                </div>
-                <div className="text-sm text-zinc-600 dark:text-zinc-400">Value</div>
-              </div>
-              <div className="text-center p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
-                <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                  {place.scores.wifi}/5
-                </div>
-                <div className="text-sm text-zinc-600 dark:text-zinc-400">WiFi</div>
-              </div>
-              <div className="text-center p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
-                <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                  {place.scores.safety}/5
-                </div>
-                <div className="text-sm text-zinc-600 dark:text-zinc-400">Safety</div>
-              </div>
-              <div className="text-center p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
-                <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                  {place.scores.liked}/5
-                </div>
-                <div className="text-sm text-zinc-600 dark:text-zinc-400">Service</div>
-              </div>
-            </div>
-
             {/* Actions */}
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-3 mb-6">
               <a
                 href={`https://maps.google.com/maps?q=${encodeURIComponent(place.name + " " + place.area + " Hyderabad")}`}
                 target="_blank"
@@ -211,6 +172,9 @@ export default async function PlacePage({ params }: PlacePageProps) {
                 Search Online
               </a>
             </div>
+
+            {/* Tabbed Content */}
+            <PlaceDetailTabs place={place} />
           </div>
         </div>
       </div>

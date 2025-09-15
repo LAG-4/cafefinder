@@ -135,6 +135,174 @@ Just as NomadList revolutionized how digital nomads discover cities and coworkin
 - **Create serendipitous discoveries** of hidden gems
 - **Foster community connections** around shared spaces
 
+## 🎁 Offers Aggregation
+
+Hyd Cafe Finder includes a comprehensive **Trivago-style offers aggregation system** that fetches and compares live discounts from multiple platforms, providing users with the best deals available for each restaurant.
+
+### How It Works
+
+The offers system aggregates current discounts and promotions from major food delivery and dining platforms:
+
+- **Supported Platforms**: Zomato, Swiggy (with extensible architecture for Dineout, EazyDiner, etc.)
+- **Real-time Data**: Fetches fresh offers every 30 minutes with intelligent caching
+- **Smart Ranking**: AI-powered scoring based on discount value, platform trust, and offer completeness
+- **Graceful Fallbacks**: Continues to work even if individual platforms are unavailable
+
+### Features
+
+- **Offers Tab**: New tab on each place detail page showing current deals
+- **Cross-platform Comparison**: See offers from all platforms in one place
+- **Deep Linking**: "View on Platform" buttons redirect to the source app for redemption
+- **Rate Limiting**: Respectful scraping with built-in rate limits and cooldowns
+- **Caching**: 30-minute cache TTL for fast performance
+- **Error Handling**: Robust error handling with provider-specific fallbacks
+
+### Technical Architecture
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────┐
+│   UI Components │    │   API Routes     │    │   Provider System   │
+│                 │    │                  │    │                     │
+│ OffersTab       │◄──►│ /api/offers/     │◄──►│ ZomatoProvider      │
+│ OfferCard       │    │ [slug]           │    │ SwiggyProvider      │
+│ Badge Count     │    │                  │    │ DineoutProvider     │
+│                 │    │ /_revalidate     │    │ [Future Providers]  │
+└─────────────────┘    └──────────────────┘    └─────────────────────┘
+                                │
+                                ▼
+                    ┌──────────────────────┐
+                    │   Core Services      │
+                    │                      │
+                    │ • Mapping System     │
+                    │ • Caching Layer      │
+                    │ • Ranking Engine     │
+                    │ • Rate Limiting      │
+                    │ • Error Handling     │
+                    └──────────────────────┘
+```
+
+### Environment Configuration
+
+Create a `.env.local` file with these variables:
+
+```bash
+# Offers Configuration
+OFFERS_CACHE_PROVIDER=memory          # memory | redis
+OFFERS_TTL_MINUTES=30                 # Cache duration
+PROVIDERS_ENABLED=zomato,swiggy       # Active platforms
+ADMIN_TOKEN=your-admin-token          # For force refresh
+
+# Optional Redis (for production)
+REDIS_URL=redis://localhost:6379
+
+# Scraping Limits
+SCRAPE_BLOCK_COOLDOWN_MIN=30          # Cooldown on errors
+SCRAPE_MAX_PARALLEL=2                 # Concurrent requests
+```
+
+### Usage Examples
+
+**Basic Offers Fetch**:
+```bash
+curl https://cafefinder-hyd.vercel.app/api/offers/hard-rock-cafe
+```
+
+**Force Refresh** (Admin only):
+```bash
+curl -X POST \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  https://cafefinder-hyd.vercel.app/api/offers/hard-rock-cafe?refresh=true
+```
+
+**Cache Warming**:
+```bash
+curl -X POST \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"warmPopular": true}' \
+  https://cafefinder-hyd.vercel.app/api/offers/_revalidate
+```
+
+### Adding New Providers
+
+1. **Create Provider Class**:
+```typescript
+// lib/offers/providers/newplatform.ts
+export class NewPlatformProvider extends BaseOfferProvider {
+  platform = 'newplatform' as const;
+  
+  async fetchOffers(input: OfferProviderInput): Promise<ProviderResult> {
+    // Implementation
+  }
+}
+```
+
+2. **Update Types**:
+```typescript
+// lib/offers/types.ts
+export type Platform = 'zomato' | 'swiggy' | 'newplatform' | ...;
+```
+
+3. **Register Provider**:
+```typescript
+// lib/offers/service.ts
+const providers = {
+  zomato: zomatoProvider,
+  swiggy: swiggyProvider,
+  newplatform: newPlatformProvider,
+  // ...
+};
+```
+
+4. **Add Mappings**:
+```json
+// lib/offers/mapping/mappings.json
+[
+  {
+    "placeSlug": "example-cafe",
+    "platform": "newplatform",
+    "url": "https://newplatform.com/...",
+    "confidence": 1.0
+  }
+]
+```
+
+### Development Commands
+
+```bash
+# Run tests
+npm test
+
+# Validate mappings
+npm run validate-mappings
+
+# Check mapping URLs
+npm run validate-mappings -- --check-urls
+
+# Type checking
+npm run typecheck
+
+# Development server
+npm run dev
+```
+
+### Operational Notes
+
+- **Caching**: Uses in-memory LRU cache by default; Redis recommended for production
+- **Rate Limiting**: 6 requests/minute per platform with burst allowance
+- **Error Handling**: Exponential backoff with 30-minute cooldowns on persistent failures
+- **Monitoring**: Use `/api/offers/_revalidate` (GET) for runtime stats
+- **Data Quality**: Manual mappings override fuzzy matching for accuracy
+
+### Maintenance
+
+- **Update Mappings**: Regularly verify and update platform URLs in `mappings.json`
+- **Monitor Logs**: Check provider errors and adjust selectors as platforms change
+- **Performance**: Monitor cache hit rates and API response times
+- **Scaling**: Consider Redis and distributed caching for high traffic
+
+---
+
 ## 🤝 Contributing
 
 We welcome contributions from developers, designers, and cafe enthusiasts! Whether you want to:

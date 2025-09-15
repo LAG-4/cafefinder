@@ -1,0 +1,149 @@
+[
+  {
+    "placeSlug": "hard-rock-cafe",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/hard-rock-cafe-banjara-hills",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 1.0
+  },
+  {
+    "placeSlug": "hard-rock-cafe",
+    "platform": "swiggy",
+    "url": "https://www.swiggy.com/restaurants/hard-rock-cafe-banjara-hills-hyderabad",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 1.0
+  },
+  {
+    "placeSlug": "social",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/social-jubilee-hills",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 1.0
+  },
+  {
+    "placeSlug": "social",
+    "platform": "swiggy",
+    "url": "https://www.swiggy.com/restaurants/social-jubilee-hills-hyderabad",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 0.8
+  },
+  {
+    "placeSlug": "mob-ministry-of-beer",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/ministry-of-beer-kondapur",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 1.0
+  },
+  {
+    "placeSlug": "aqua",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/aqua-the-park-hyderabad-somajiguda",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 1.0
+  },
+  {
+    "placeSlug": "one8-commune-virat-kohli",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/one8-commune-hitech-city",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 1.0
+  },
+  {
+    "placeSlug": "roast-ccx",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/roast-coffee-jubilee-hills",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 0.8
+  },
+  {
+    "placeSlug": "tan-coffee",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/tan-coffee-madhapur",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 1.0
+  },
+  {
+    "placeSlug": "people-s-choice-cafe-lgbtq-safe-space",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/peoples-choice-cafe-sainikpuri",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 1.0
+  },
+  {
+    "placeSlug": "la-sabroso-cafe",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/la-sabroso-cafe-banjara-hills",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 0.8
+  },
+  {
+    "placeSlug": "echoes-cafe",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/echoes-cafe-film-nagar",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 0.8
+  },
+  {
+    "placeSlug": "house-of-gourmet",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/house-of-gourmet-jubilee-hills",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 0.8
+  },
+  {
+    "placeSlug": "snort-club-kitchen",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/snort-club-kitchen-jubilee-hills",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 0.8
+  },
+  {
+    "placeSlug": "iron-hill-cafe",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/iron-hill-cafe-madhapur",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 0.8
+  },
+  {
+    "placeSlug": "roastery-coffee-house",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/roastery-coffee-house-hitech-city",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 0.8
+  },
+  {
+    "placeSlug": "kaficko",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/kaficko-coffee-kondapur",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 0.7
+  },
+  {
+    "placeSlug": "tiger-lilly-bistro",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/tiger-lilly-bistro-jubilee-hills",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 0.8
+  },
+  {
+    "placeSlug": "etsi-cafe",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/etsi-cafe-hitech-city",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 0.7
+  },
+  {
+    "placeSlug": "katha-coffee",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/katha-coffee-jubilee-hills",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 0.7
+  },
+  {
+    "placeSlug": "sobremesa",
+    "platform": "zomato",
+    "url": "https://www.zomato.com/hyderabad/sobremesa-banjara-hills",
+    "lastVerifiedAt": "2024-01-15",
+    "confidence": 0.7
+  }
+]
