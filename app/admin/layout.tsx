@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Admin - Cafefinder',
@@ -24,12 +25,12 @@ export default function AdminLayout({
               </p>
             </div>
             <nav className="flex items-center space-x-4">
-              <a 
+              <Link 
                 href="/" 
                 className="text-gray-600 hover:text-gray-900 transition-colors"
               >
                 ← Back to Site
-              </a>
+              </Link>
             </nav>
           </div>
         </div>

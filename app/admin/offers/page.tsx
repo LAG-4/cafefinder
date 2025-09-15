@@ -12,7 +12,6 @@ import {
   TrendingDown, 
   Clock,
   ExternalLink,
-  Filter,
   Search
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';

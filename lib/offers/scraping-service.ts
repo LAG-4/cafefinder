@@ -12,6 +12,22 @@ export interface PlaceData {
   type: string;
 }
 
+interface ScrapeResult {
+  success: boolean;
+  placeSlug: string;
+  error?: unknown;
+}
+
+interface ScrapingStatusRecord {
+  placeSlug: string;
+  zomatoUrl: string;
+  lastScrapedAt: string;
+  nextScrapeAt: string;
+  status: string;
+  errorMessage?: string;
+  offersFound: number;
+}
+
 export class OfferScrapingService {
   private convex: ConvexHttpClient;
   private scraper: ZomatoScraper;
@@ -72,12 +88,11 @@ export class OfferScrapingService {
       const now = new Date().toISOString();
       const nextScrape = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour from now
       
-      const currentOfferTitles: string[] = [];
-      
-      for (const offer of offers) {
-        await this.convex.mutation(api.offers.upsertOffer, {
-          placeSlug,
-          platform: 'zomato',
+      // Replace all old offers with new ones (prevents accumulation)
+      await this.convex.mutation(api.offers.replaceOffersForPlace, {
+        placeSlug,
+        platform: 'zomato',
+        offers: offers.map(offer => ({
           title: offer.title,
           description: offer.description,
           validityText: offer.validityText,
@@ -91,16 +106,7 @@ export class OfferScrapingService {
           lastCheckedAt: now,
           offerType: offer.offerType,
           sourceUrl: zomatoUrl,
-        });
-        
-        currentOfferTitles.push(offer.title);
-      }
-      
-      // Mark any offers not found in this scrape as inactive
-      await this.convex.mutation(api.offers.markOffersInactive, {
-        placeSlug,
-        currentOfferTitles,
-        checkedAt: now,
+        }))
       });
       
       // Update scraping status
@@ -152,7 +158,7 @@ export class OfferScrapingService {
       console.log(`Found ${placesToScrape.length} places to scrape`);
       
       // Process all places in parallel for much faster scraping
-      const scrapePromises = placesToScrape.map(async (place: any, index: number) => {
+      const scrapePromises = placesToScrape.map(async (place: ScrapingStatusRecord, index: number) => {
         try {
           // Add small staggered delay to avoid overwhelming the server
           await this.delay(index * 100); // 100ms stagger
@@ -165,7 +171,7 @@ export class OfferScrapingService {
       });
       
       const results = await Promise.all(scrapePromises);
-      const successful = results.filter((r: any) => r.success).length;
+      const successful = results.filter((r: ScrapeResult) => r.success).length;
       console.log(`Batch complete: ${successful}/${results.length} places scraped successfully`);
       
     } catch (error) {
@@ -201,7 +207,7 @@ export class OfferScrapingService {
         
         console.log(`Processing chunk ${chunkNumber}/${totalChunks} (${chunk.length} places)`);
         
-        const scrapePromises = chunk.map(async (place: any, index: number) => {
+        const scrapePromises = chunk.map(async (place: ScrapingStatusRecord, index: number) => {
           try {
             // Staggered delay within chunk (1-3 seconds apart)
             const delay = (index + 1) * (1000 + Math.random() * 2000);
@@ -216,8 +222,8 @@ export class OfferScrapingService {
         });
         
         const results = await Promise.all(scrapePromises);
-        const chunkSuccess = results.filter((r: any) => r.success).length;
-        const chunkFailed = results.filter((r: any) => !r.success).length;
+        const chunkSuccess = results.filter((r: ScrapeResult) => r.success).length;
+        const chunkFailed = results.filter((r: ScrapeResult) => !r.success).length;
         
         totalSuccess += chunkSuccess;
         totalFailed += chunkFailed;
@@ -301,8 +307,8 @@ export class OfferScrapingService {
           }
         }
         
-        const chunkSuccess = results.filter((r: any) => r.success).length;
-        const chunkFailed = results.filter((r: any) => !r.success).length;
+        const chunkSuccess = results.filter((r: ScrapeResult) => r.success).length;
+        const chunkFailed = results.filter((r: ScrapeResult) => !r.success).length;
         
         totalSuccess += chunkSuccess;
         totalFailed += chunkFailed;

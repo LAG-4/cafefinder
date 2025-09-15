@@ -5,6 +5,32 @@ import { api } from '../../../convex/_generated/api';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+interface OfferResponse {
+  id: string;
+  platform: string;
+  title: string;
+  description?: string;
+  validityText?: string;
+  effectivePriceText?: string;
+  discountPct?: number;
+  minSpend?: number;
+  terms?: string[];
+  deepLink: string;
+  fetchedAt: string;
+  isActive: boolean;
+  offerType?: string;
+  expiresAt?: string;
+  lastCheckedAt?: string;
+}
+
+interface PlaceWithOffers {
+  placeSlug: string;
+  offers: OfferResponse[];
+  totalOffers: number;
+  activeOffers: number;
+  lastFetchedAt: string;
+}
+
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONVEX_URL;
 
 if (!CONVEX_URL) {
@@ -60,10 +86,10 @@ export async function GET() {
       }
       
       return acc;
-    }, {} as Record<string, any>);
+    }, {} as Record<string, PlaceWithOffers>);
 
     // Convert to array and sort by last fetched time
-    const placesWithOffers = Object.values(offersByPlace).sort((a: any, b: any) => 
+    const placesWithOffers = Object.values(offersByPlace).sort((a: PlaceWithOffers, b: PlaceWithOffers) => 
       new Date(b.lastFetchedAt).getTime() - new Date(a.lastFetchedAt).getTime()
     );
 

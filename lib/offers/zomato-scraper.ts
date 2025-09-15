@@ -12,6 +12,10 @@ export interface ZomatoOffer {
   offerType?: string;
 }
 
+interface NetworkError extends Error {
+  code?: string;
+}
+
 export class ZomatoScraper {
   private userAgents = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -67,7 +71,7 @@ export class ZomatoScraper {
     this.requestStats.lastRequestTime = Date.now();
   }
 
-  private async makeRequest(url: string, retries: number = 3): Promise<any> {
+  private async makeRequest(url: string, retries: number = 3): Promise<string> {
     await this.respectRateLimit();
 
     const headers = {
@@ -117,14 +121,14 @@ export class ZomatoScraper {
 
       this.requestStats.successCount++;
       this.requestStats.consecutiveFailures = 0;
-      return response;
+      return response.data;
 
     } catch (error) {
       this.requestStats.consecutiveFailures++;
       this.requestStats.failureCount++;
       
-      if (retries > 0 && ((error as any).code === 'ECONNRESET' || (error as any).code === 'ETIMEDOUT')) {
-        console.log(`Network error (${(error as any).code}). Retrying in ${this.getRandomDelay(2000, 5000)}ms. Retries left: ${retries}`);
+      if (retries > 0 && ((error as NetworkError).code === 'ECONNRESET' || (error as NetworkError).code === 'ETIMEDOUT')) {
+        console.log(`Network error (${(error as NetworkError).code}). Retrying in ${this.getRandomDelay(2000, 5000)}ms. Retries left: ${retries}`);
         await new Promise(resolve => setTimeout(resolve, this.getRandomDelay(2000, 5000)));
         return this.makeRequest(url, retries - 1);
       }
@@ -138,7 +142,7 @@ export class ZomatoScraper {
       console.log(`Scraping offers from: ${zomatoUrl}`);
       
       const response = await this.makeRequest(zomatoUrl);
-      const $ = cheerio.load(response.data);
+      const $ = cheerio.load(response);
       const offers: ZomatoOffer[] = [];
       
       // Extract offers from various sections

@@ -67,7 +67,58 @@ export const upsertOffer = mutation({
   },
 });
 
-// Mark offers as inactive if they weren't found in latest scrape
+// Replace old offers with new ones for a place (prevents accumulation)
+export const replaceOffersForPlace = mutation({
+  args: {
+    placeSlug: v.string(),
+    platform: v.string(),
+    offers: v.array(v.object({
+      title: v.string(),
+      description: v.optional(v.string()),
+      validityText: v.optional(v.string()),
+      effectivePriceText: v.optional(v.string()),
+      discountPct: v.optional(v.number()),
+      minSpend: v.optional(v.number()),
+      terms: v.optional(v.array(v.string())),
+      deepLink: v.string(),
+      fetchedAt: v.string(),
+      isActive: v.boolean(),
+      expiresAt: v.optional(v.string()),
+      lastCheckedAt: v.optional(v.string()),
+      offerType: v.optional(v.string()),
+      sourceUrl: v.optional(v.string()),
+    })),
+  },
+  handler: async (ctx, args) => {
+    // Delete all existing offers for this place and platform
+    const existingOffers = await ctx.db
+      .query("offers")
+      .withIndex("by_place", (q) => q.eq("placeSlug", args.placeSlug))
+      .filter((q) => q.eq(q.field("platform"), args.platform))
+      .collect();
+
+    // Delete old offers
+    for (const offer of existingOffers) {
+      await ctx.db.delete(offer._id);
+    }
+
+    // Insert new offers
+    const insertPromises = args.offers.map(offer => 
+      ctx.db.insert("offers", {
+        placeSlug: args.placeSlug,
+        platform: args.platform,
+        ...offer,
+        lastCheckedAt: offer.lastCheckedAt || offer.fetchedAt,
+        sourceUrl: offer.sourceUrl || offer.deepLink,
+      })
+    );
+
+    await Promise.all(insertPromises);
+    return args.offers.length;
+  },
+});
+
+// Mark offers as inactive if they weren't found in latest scrape (legacy function)
 export const markOffersInactive = mutation({
   args: {
     placeSlug: v.string(),
@@ -94,6 +145,32 @@ export const markOffersInactive = mutation({
 
     await Promise.all(updates);
     return updates.length;
+  },
+});
+
+// Clean up inactive offers older than specified days
+export const cleanupInactiveOffers = mutation({
+  args: { 
+    olderThanDays: v.optional(v.number()) // Default 7 days if not specified
+  },
+  handler: async (ctx, args) => {
+    const daysAgo = args.olderThanDays || 7;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+    const cutoffISO = cutoffDate.toISOString();
+
+    const inactiveOffers = await ctx.db
+      .query("offers")
+      .withIndex("by_active", (q) => q.eq("isActive", false))
+      .filter((q) => q.lt(q.field("fetchedAt"), cutoffISO))
+      .collect();
+
+    // Delete old inactive offers
+    for (const offer of inactiveOffers) {
+      await ctx.db.delete(offer._id);
+    }
+
+    return inactiveOffers.length;
   },
 });
 

@@ -17,14 +17,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if (!CONVEX_URL) {
+      return NextResponse.json(
+        { error: 'Convex URL not configured' }, 
+        { status: 500 }
+      );
+    }
+
     const scrapingService = new OfferScrapingService(CONVEX_URL);
     
     const body = await request.json().catch(() => ({}));
     const { 
       mode = 'all', 
       strategy = 'smart',
-      chunkSize,
-      chunkDelay,
       limit,
       source = 'manual'
     } = body;
@@ -57,7 +62,7 @@ export async function POST(request: NextRequest) {
     console.log(`✅ ${strategy} scraping completed:`, result);
     
     return NextResponse.json({
-      success: true,
+      requestSuccess: true,
       timestamp: new Date().toISOString(),
       mode,
       strategy,
