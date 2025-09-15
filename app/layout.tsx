@@ -182,6 +182,13 @@ export default function RootLayout({
                 <Link href="/" className="font-bold text-xl transition-colors hover:opacity-80" style={{ color: 'var(--primary)' }}>
                   CafeHopper
                 </Link>
+                <Link
+                  href="/about"
+                  className="text-sm px-2 py-1 rounded-md transition-colors hover:bg-red-50 dark:hover:bg-red-950/20"
+                  style={{ color: 'var(--muted-foreground)' }}
+                >
+                  About
+                </Link>
               </div>
                 <div className="hidden md:block text-sm" style={{ color: 'var(--muted-foreground)' }}>Hyderabad hangouts for food, work and fun</div>
                 <div className="flex items-center gap-4">

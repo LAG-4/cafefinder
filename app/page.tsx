@@ -29,6 +29,7 @@ export default function Home() {
           </Suspense>
         </section>
       </div>
+
     </div>
   );
 }
