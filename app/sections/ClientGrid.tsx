@@ -236,7 +236,7 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
               </div>
             </a>
           </DialogTrigger>
-          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 m-2 sm:m-6">
+          <DialogContent className="max-h-[90vh] overflow-y-auto p-0">
             <VisuallyHidden>
               <DialogTitle>{c.name} - Cafe Details</DialogTitle>
             </VisuallyHidden>

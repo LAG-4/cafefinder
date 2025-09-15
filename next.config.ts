@@ -25,6 +25,14 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "district-150.com" },
       { protocol: "https", hostname: "www.venuelook.com" },
       { protocol: "https", hostname: "cdn.venuelook.com" },
+      // Additional hostnames from CSV analysis
+      { protocol: "https", hostname: "content3.jdmagicbox.com" },
+      { protocol: "https", hostname: "image.telanganatoday.com" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      { protocol: "https", hostname: "media-cdn.tripadvisor.com" },
+      { protocol: "https", hostname: "www.deccanchronicle.com" },
+      { protocol: "https", hostname: "images.jdmagicbox.com" },
+      { protocol: "https", hostname: "images.adsttc.com" },
     ],
   },
 };

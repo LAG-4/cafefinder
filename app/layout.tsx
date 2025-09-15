@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 import { ThemeProvider } from "../components/theme-provider";
 import { UiProvider } from "../components/ui-store";
@@ -17,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Hyd Cafe Finder",
-  description: "Discover the best cafes, restaurants, and pubs in Hyderabad",
+  title: "CafeHopper - Discover Hyderabad's Best Cafes",
+  description: "Discover the best cafes, restaurants, and pubs in Hyderabad with CafeHopper",
 };
 
 export default function RootLayout({
@@ -54,8 +55,9 @@ export default function RootLayout({
             >
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="inline-flex items-center justify-center w-9 h-9 rounded-full text-white font-bold" style={{ backgroundColor: 'var(--primary)' }}>CF</span>
-                <div className="font-semibold" style={{ color: 'var(--foreground)' }}>Hyd Cafe Finder</div>
+                <Link href="/" className="font-bold text-xl transition-colors hover:opacity-80" style={{ color: 'var(--primary)' }}>
+                  CafeHopper
+                </Link>
               </div>
                 <div className="hidden md:block text-sm" style={{ color: 'var(--muted-foreground)' }}>Hyderabad hangouts for food, work and fun</div>
                 <div className="flex items-center gap-4">
@@ -81,7 +83,7 @@ export default function RootLayout({
                 color: 'var(--muted-foreground)' 
               }}
             >
-              © {new Date().getFullYear()} Hyd Cafe Finder
+              © {new Date().getFullYear()} CafeHopper
             </footer>
           </div>
           </UiProvider>
