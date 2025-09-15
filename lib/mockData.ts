@@ -1,1 +1,3 @@
-export const cafes: any[] = [];
+import { Cafe } from './types';
+
+export const cafes: Cafe[] = [];

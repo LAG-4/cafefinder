@@ -18,6 +18,42 @@ type Item = {
 
 interface ClientGridProps {
   activeFilters: Record<string, boolean>;
+  searchQuery?: string;
+  sortOption?: string;
+}
+
+function searchItems(items: Item[], query: string): Item[] {
+  if (!query.trim()) return items;
+  
+  const lowercaseQuery = query.toLowerCase();
+  return items.filter(item => 
+    item.name.toLowerCase().includes(lowercaseQuery) ||
+    item.area.toLowerCase().includes(lowercaseQuery) ||
+    item.type.toLowerCase().includes(lowercaseQuery) ||
+    (item.raw.Location && item.raw.Location.toLowerCase().includes(lowercaseQuery))
+  );
+}
+
+function sortItems(items: Item[], sortOption: string): Item[] {
+  const sorted = [...items];
+  
+  switch (sortOption) {
+    case "top":
+      return sorted.sort((a, b) => b.scores.overall - a.scores.overall);
+    case "cost":
+      return sorted.sort((a, b) => b.scores.cost - a.scores.cost); // Higher cost score = better value
+    case "wifi":
+      return sorted.sort((a, b) => b.scores.wifi - a.scores.wifi);
+    case "reviews":
+      // Sort by aesthetic score as a proxy for reviews
+      return sorted.sort((a, b) => {
+        const aAesthetic = parseFloat(a.raw.Aesthetic_Score || "0");
+        const bAesthetic = parseFloat(b.raw.Aesthetic_Score || "0");
+        return bAesthetic - aAesthetic;
+      });
+    default:
+      return sorted;
+  }
 }
 
 function filterItems(items: Item[], filters: Record<string, boolean>): Item[] {
@@ -82,7 +118,7 @@ function filterItems(items: Item[], filters: Record<string, boolean>): Item[] {
   });
 }
 
-export default function ClientGrid({ activeFilters }: ClientGridProps) {
+export default function ClientGrid({ activeFilters, searchQuery = "", sortOption = "top" }: ClientGridProps) {
   const [allItems, setAllItems] = useState<Item[]>([]);
   const [filteredItems, setFilteredItems] = useState<Item[]>([]);
   const { view } = useUi();
@@ -95,8 +131,11 @@ export default function ClientGrid({ activeFilters }: ClientGridProps) {
   }, []);
 
   useEffect(() => {
-    setFilteredItems(filterItems(allItems, activeFilters));
-  }, [allItems, activeFilters]);
+    let items = filterItems(allItems, activeFilters);
+    items = searchItems(items, searchQuery);
+    items = sortItems(items, sortOption);
+    setFilteredItems(items);
+  }, [allItems, activeFilters, searchQuery, sortOption]);
 
   return (
     <div className={view === "grid" ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5" : "space-y-3 sm:space-y-4"}>
@@ -124,6 +163,13 @@ export default function ClientGrid({ activeFilters }: ClientGridProps) {
                   fill
                   sizes="(max-width:768px) 100vw, (max-width:1200px) 50vw, 33vw"
                   className="object-cover"
+                  onError={(e) => {
+                    // Fallback to placeholder if image fails to load
+                    const img = e.target as HTMLImageElement;
+                    if (img.src !== "https://picsum.photos/800/600") {
+                      img.src = "https://picsum.photos/800/600";
+                    }
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                 <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 right-2 sm:right-3 text-white">
@@ -140,7 +186,7 @@ export default function ClientGrid({ activeFilters }: ClientGridProps) {
                   </div>
                 </div>
                 {/* Hover stats pill like screenshot */}
-                <div className="absolute top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 opacity-0 group-hover:opacity-100 transition hidden sm:block">
+                <div className={`absolute opacity-0 group-hover:opacity-100 transition hidden sm:block ${view === "list" ? "top-2 left-2 right-2" : "top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3"}`}>
                   <div className="backdrop-blur-md bg-black/40 rounded-xl p-2 sm:p-3 text-white">
                     {[
                       { label: "Overall", value: c.scores.overall },
@@ -148,23 +194,42 @@ export default function ClientGrid({ activeFilters }: ClientGridProps) {
                       { label: "Internet", value: c.scores.wifi * 20 },
                       { label: "Liked", value: c.scores.liked * 20 },
                       { label: "Safety", value: c.scores.safety * 20 },
-                    ].map((r) => (
-                      <div key={r.label} className="flex items-center gap-2 sm:gap-3 py-0.5 sm:py-1">
-                        <div className="w-16 sm:w-24 text-xs sm:text-sm">{r.label}</div>
-                        <div className="flex-1 h-2 sm:h-3 rounded-full bg-white/30">
-                          <div className="h-2 sm:h-3 rounded-full bg-emerald-400" style={{ width: `${Math.min(r.value, 100)}%` }} />
+                    ].map((r) => {
+                      const getColor = (percentage: number) => {
+                        if (percentage <= 20) return "#ef4444"; // red-500
+                        if (percentage <= 40) return "#f97316"; // orange-500
+                        if (percentage <= 60) return "#eab308"; // yellow-500
+                        if (percentage <= 80) return "#84cc16"; // lime-500
+                        return "#22c55e"; // green-500
+                      };
+                      
+                      return (
+                        <div key={r.label} className="flex items-center gap-2 sm:gap-3 py-0.5 sm:py-1">
+                          <div className="w-16 sm:w-24 text-xs sm:text-sm">{r.label}</div>
+                          <div className="flex-1 h-2 sm:h-3 rounded-full bg-white/30">
+                            <div 
+                              className="h-2 sm:h-3 rounded-full transition-all duration-300" 
+                              style={{ 
+                                width: `${Math.min(r.value, 100)}%`,
+                                backgroundColor: getColor(Math.min(r.value, 100))
+                              }} 
+                            />
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
-              <div className="p-3 sm:p-4 flex items-center justify-between flex-1">
-                <div className="space-y-1">
+              <div className={`p-3 sm:p-4 flex items-center justify-between flex-1 ${view === "list" ? "min-h-[100px] sm:min-h-[120px]" : ""}`}>
+                <div className="space-y-1 flex-1">
+                  {view === "list" && (
+                    <div className="font-semibold text-base" style={{ color: 'var(--foreground)' }}>{c.name}</div>
+                  )}
                   <div className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{c.type}</div>
                   <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Hyderabad · {c.area}</div>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex-shrink-0 ml-3">
                   <div className="text-sm font-medium">Overall: {c.scores.overall.toFixed(2)}/100</div>
                   <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Cost: {c.scores.cost.toFixed(2)}/5</div>
                 </div>
@@ -177,7 +242,19 @@ export default function ClientGrid({ activeFilters }: ClientGridProps) {
             </VisuallyHidden>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 min-h-[500px] sm:min-h-[600px]">
               <div className="relative h-48 sm:h-80 lg:h-full min-h-[200px] sm:min-h-[300px]">
-                <Image src={isValidHttpUrl(c.image) ? c.image : "https://picsum.photos/800/600"} alt={c.name} fill className="object-cover lg:rounded-l-xl" />
+                <Image 
+                  src={isValidHttpUrl(c.image) ? c.image : "https://picsum.photos/800/600"} 
+                  alt={c.name} 
+                  fill 
+                  className="object-cover lg:rounded-l-xl"
+                  onError={(e) => {
+                    // Fallback to placeholder if image fails to load
+                    const img = e.target as HTMLImageElement;
+                    if (img.src !== "https://picsum.photos/800/600") {
+                      img.src = "https://picsum.photos/800/600";
+                    }
+                  }}
+                />
               </div>
               <div className="p-4 sm:p-6 flex flex-col">
                 <div className="mb-4 sm:mb-6">
@@ -300,6 +377,16 @@ export default function ClientGrid({ activeFilters }: ClientGridProps) {
 function Bar({ label, value }: { label: string; value: string }) {
   const map: Record<string, number> = { "very bad": 10, bad: 25, okay: 50, good: 75, "very good": 90, great: 100 };
   const v = map[String(value || "").toLowerCase()] ?? 0;
+  
+  // Color coding based on the value
+  const getColor = (percentage: number) => {
+    if (percentage <= 20) return "#ef4444"; // red-500
+    if (percentage <= 40) return "#f97316"; // orange-500
+    if (percentage <= 60) return "#eab308"; // yellow-500
+    if (percentage <= 80) return "#84cc16"; // lime-500
+    return "#22c55e"; // green-500
+  };
+  
   return (
     <div className="flex items-center gap-3">
       <div className="w-52 text-xs flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
@@ -307,13 +394,57 @@ function Bar({ label, value }: { label: string; value: string }) {
         {label}
       </div>
       <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
-        <div className="h-full bg-emerald-500" style={{ width: `${v}%` }} />
+        <div 
+          className="h-full transition-all duration-300" 
+          style={{ 
+            width: `${v}%`,
+            backgroundColor: getColor(v)
+          }} 
+        />
       </div>
     </div>
   );
 }
 
 function KeyVal({ label, value }: { label: string; value?: string }) {
+  // Check if this is a rating value that should show a progress bar
+  const ratingTerms = ["very bad", "bad", "okay", "good", "very good", "great"];
+  const isRating = value && ratingTerms.some(term => value.toLowerCase().includes(term));
+  
+  if (isRating) {
+    const map: Record<string, number> = { "very bad": 10, bad: 25, okay: 50, good: 75, "very good": 90, great: 100 };
+    const v = map[String(value || "").toLowerCase()] ?? 0;
+    
+    const getColor = (percentage: number) => {
+      if (percentage <= 20) return "#ef4444"; // red-500
+      if (percentage <= 40) return "#f97316"; // orange-500
+      if (percentage <= 60) return "#eab308"; // yellow-500
+      if (percentage <= 80) return "#84cc16"; // lime-500
+      return "#22c55e"; // green-500
+    };
+    
+    return (
+      <div className="flex items-center gap-3 text-sm">
+        <div className="w-56 flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
+          <Emoji label={label} />
+          {label}
+        </div>
+        <div className="flex-1 flex items-center gap-3">
+          <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
+            <div 
+              className="h-full transition-all duration-300" 
+              style={{ 
+                width: `${v}%`,
+                backgroundColor: getColor(v)
+              }} 
+            />
+          </div>
+          <div className="w-20 text-xs font-medium" style={{ color: 'var(--foreground)' }}>{value}</div>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="flex items-center gap-3 text-sm">
       <div className="w-56 flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>

@@ -27,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100`}
       >
         <BGPattern 
@@ -37,24 +37,52 @@ export default function RootLayout({
           fill="var(--muted-foreground)" 
           className="opacity-30"
         />
-        <ThemeProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
           <UiProvider>
           <div className="min-h-screen flex flex-col">
-            <header className="sticky top-0 z-40 bg-white/80 dark:bg-zinc-950/80 backdrop-blur border-b border-zinc-200 dark:border-zinc-800">
+            <header 
+              className="sticky top-0 z-40 backdrop-blur border-b" 
+              style={{ 
+                backgroundColor: 'color-mix(in srgb, var(--background) 80%, transparent)',
+                borderColor: 'var(--border)' 
+              }}
+            >
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-rose-600 text-white font-bold">CF</span>
-                <div className="font-semibold">Hyd Cafe Finder</div>
+                <span className="inline-flex items-center justify-center w-9 h-9 rounded-full text-white font-bold" style={{ backgroundColor: 'var(--primary)' }}>CF</span>
+                <div className="font-semibold" style={{ color: 'var(--foreground)' }}>Hyd Cafe Finder</div>
               </div>
-                <div className="hidden md:block text-sm text-zinc-500 dark:text-zinc-400">Hyderabad hangouts for food, work and fun</div>
+                <div className="hidden md:block text-sm" style={{ color: 'var(--muted-foreground)' }}>Hyderabad hangouts for food, work and fun</div>
                 <div className="flex items-center gap-4">
                   <ThemeToggle />
-                  <a href="#" className="rounded-md bg-zinc-900 text-white px-3 py-1.5 text-sm hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">Join</a>
+                  <a 
+                    href="#" 
+                    className="rounded-md px-3 py-1.5 text-sm transition-colors hover:opacity-80"
+                    style={{ 
+                      backgroundColor: 'var(--primary)', 
+                      color: 'var(--primary-foreground)' 
+                    }}
+                  >
+                    Join
+                  </a>
                 </div>
               </div>
             </header>
             <main className="flex-1">{children}</main>
-            <footer className="border-t border-zinc-200 dark:border-zinc-800 py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">© {new Date().getFullYear()} Hyd Cafe Finder</footer>
+            <footer 
+              className="border-t py-6 text-center text-sm" 
+              style={{ 
+                borderColor: 'var(--border)', 
+                color: 'var(--muted-foreground)' 
+              }}
+            >
+              © {new Date().getFullYear()} Hyd Cafe Finder
+            </footer>
           </div>
           </UiProvider>
         </ThemeProvider>
