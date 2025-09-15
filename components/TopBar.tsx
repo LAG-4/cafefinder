@@ -2,15 +2,17 @@
 import { useState } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
+import { useUi } from "./ui-store";
+import { LayoutGrid, List as ListIcon, X, Plus } from "lucide-react";
 
 export default function TopBar() {
   const [query, setQuery] = useState("");
-  const [view, setView] = useState<"grid" | "list">("grid");
+  const { view, setView } = useUi();
   const [sort, setSort] = useState("top");
 
   return (
-    <div className="flex flex-wrap items-center gap-3 md:gap-4">
-      <div className="flex-1 min-w-48">
+    <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 md:gap-4">
+      <div className="flex-1 min-w-48 order-1">
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -18,28 +20,36 @@ export default function TopBar() {
         />
       </div>
 
-      <Button variant="outline">Close filters</Button>
+      <Button variant="outline" className="sm:hidden order-2 w-full">
+        <X className="h-4 w-4" /> Toggle Filters
+      </Button>
+      
+      <Button variant="outline" className="hidden sm:flex order-3">
+        <X className="h-4 w-4" /> Close filters
+      </Button>
 
-      <div className="h-11 inline-flex rounded-lg border border-zinc-300 dark:border-zinc-700 overflow-hidden">
-        <button
-          className={`px-3 md:px-4 ${view === "grid" ? "bg-zinc-100" : "bg-white"}`}
+      <div className="h-11 inline-flex rounded-lg border border-zinc-300 dark:border-zinc-700 overflow-hidden bg-white dark:bg-zinc-900 order-4 w-full sm:w-auto">
+        <Button
+          variant={view === "grid" ? "default" : "ghost"}
+          className={`h-11 rounded-none flex-1 sm:flex-none ${view === "grid" ? "" : "text-zinc-700 dark:text-zinc-300"}`}
           onClick={() => setView("grid")}
         >
-          Grid view
-        </button>
-        <button
-          className={`px-3 md:px-4 ${view === "list" ? "bg-zinc-100" : "bg-white"}`}
+          <LayoutGrid className="h-4 w-4" /> Grid
+        </Button>
+        <Button
+          variant={view === "list" ? "default" : "ghost"}
+          className={`h-11 rounded-none flex-1 sm:flex-none ${view === "list" ? "" : "text-zinc-700 dark:text-zinc-300"}`}
           onClick={() => setView("list")}
         >
-          List
-        </button>
+          <ListIcon className="h-4 w-4" /> List
+        </Button>
       </div>
 
-      <div className="relative">
+      <div className="relative order-5 w-full sm:w-auto">
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value)}
-          className="h-11 pl-3 pr-8 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900"
+          className="h-11 pl-3 pr-8 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 w-full sm:w-auto min-w-48"
         >
           <option value="top">Sort by: Top rated</option>
           <option value="cost">Cost (low)</option>
@@ -48,7 +58,7 @@ export default function TopBar() {
         </select>
       </div>
 
-      <Button className="ml-auto">Add place</Button>
+      <Button className="ml-auto"><Plus className="h-4 w-4" /> Add place</Button>
     </div>
   );
 }

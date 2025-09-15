@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "../components/theme-provider";
+import { UiProvider } from "../components/ui-store";
 import { ThemeToggle } from "../components/ThemeToggle";
 
 const geistSans = Geist({
@@ -29,6 +30,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100`}
       >
         <ThemeProvider>
+          <UiProvider>
           <div className="min-h-screen flex flex-col">
             <header className="sticky top-0 z-40 bg-white/80 dark:bg-zinc-950/80 backdrop-blur border-b border-zinc-200 dark:border-zinc-800">
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -46,6 +48,7 @@ export default function RootLayout({
             <main className="flex-1">{children}</main>
             <footer className="border-t border-zinc-200 dark:border-zinc-800 py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">© {new Date().getFullYear()} Hyd Cafe Finder</footer>
           </div>
+          </UiProvider>
         </ThemeProvider>
       </body>
     </html>
