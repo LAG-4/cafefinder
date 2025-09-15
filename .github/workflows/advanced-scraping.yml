@@ -2,9 +2,7 @@ name: Multi-Strategy Offer Scraping
 
 on:
   schedule:
-    # Primary schedule: Every hour
-    - cron: '0 * * * *'
-    # Backup schedule: Every 3 hours (in case primary fails)
+    # Run every 3 hours to avoid conflicts with the reliable workflow
     - cron: '0 */3 * * *'
   
   workflow_dispatch:
@@ -21,30 +19,56 @@ on:
           - test
 
 env:
-  MAX_RETRIES: 3
-  TIMEOUT_MINUTES: 15
+  MAX_RETRIES: 2
+  TIMEOUT_MINUTES: 12
 
 jobs:
+  validate-environment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      app-url: ${{ steps.check.outputs.app-url }}
+      has-secrets: ${{ steps.check.outputs.has-secrets }}
+    
+    steps:
+      - name: Check Environment
+        id: check
+        run: |
+          echo "🔍 Validating environment..."
+          
+          if [ -z "${{ secrets.APP_URL }}" ]; then
+            echo "❌ APP_URL secret is missing"
+            echo "::error::APP_URL secret must be configured in repository settings"
+            exit 1
+          fi
+          
+          echo "app-url=${{ secrets.APP_URL }}" >> $GITHUB_OUTPUT
+          echo "has-secrets=true" >> $GITHUB_OUTPUT
+          echo "✅ Environment validated"
+
   scrape-strategy-smart:
+    needs: validate-environment
     if: github.event.inputs.strategy == 'smart' || github.event.inputs.strategy == '' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 12
     
     strategy:
       fail-fast: false
       matrix:
-        region: [us-east, us-west, eu-central]
+        region: [primary, backup]  # Simplified to avoid conflicts
     
     steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y jq curl
+          echo "✅ Dependencies installed"
+      
       - name: Set up environment
         run: |
           echo "🌍 Running from region: ${{ matrix.region }}"
           echo "🕐 Timestamp: $(date -u)"
           echo "🆔 Run ID: ${{ github.run_id }}"
-          
-          # Install necessary tools
-          sudo apt-get update
-          sudo apt-get install -y jq curl
       
       - name: Smart Scraping with Retry Logic
         run: |
@@ -55,11 +79,11 @@ jobs:
           while [ $attempt -le $max_attempts ] && [ "$success" = false ]; do
             echo "🚀 Attempt $attempt/$max_attempts: Smart scraping strategy"
             
-            # Add randomized delay to avoid simultaneous requests from multiple regions
-            if [ "${{ matrix.region }}" = "us-west" ]; then
-              sleep $((RANDOM % 30 + 10))  # 10-40 seconds delay
-            elif [ "${{ matrix.region }}" = "eu-central" ]; then
-              sleep $((RANDOM % 60 + 20))  # 20-80 seconds delay
+            # Add delay only for backup region to prevent conflicts
+            if [ "${{ matrix.region }}" = "backup" ]; then
+              delay=$((RANDOM % 120 + 60))  # 60-180 seconds delay
+              echo "⏳ Backup region waiting ${delay}s to avoid conflicts..."
+              sleep $delay
             fi
             
             response=$(curl -s -w "%{http_code}" -X POST \
@@ -70,13 +94,12 @@ jobs:
               -d '{
                 "mode": "all",
                 "strategy": "smart",
-                "source": "github-actions",
-                "region": "${{ matrix.region }}",
+                "source": "github-actions-${{ matrix.region }}",
                 "attempt": '$attempt'
               }' \
               --connect-timeout 30 \
-              --max-time 300 \
-              "${{ secrets.APP_URL }}/api/scraping/cron" \
+              --max-time 480 \
+              "${{ secrets.APP_URL }}/api/scraping/batch" \
               -o response.json 2>/dev/null || echo "000")
             
             http_code="${response: -3}"
@@ -87,13 +110,13 @@ jobs:
               echo "✅ Smart scraping completed successfully!"
               
               # Parse and display results
-              if command -v jq &> /dev/null; then
-                success_count=$(cat response.json | jq -r '.result.success // 0' 2>/dev/null || echo "unknown")
-                total_count=$(cat response.json | jq -r '.result.total // 0' 2>/dev/null || echo "unknown")
+              if command -v jq &> /dev/null && [ -f response.json ]; then
+                success_count=$(cat response.json | jq -r '.result.success // .success // 0' 2>/dev/null || echo "unknown")
+                total_count=$(cat response.json | jq -r '.result.total // .total // 0' 2>/dev/null || echo "unknown")
                 echo "📈 Results: $success_count/$total_count places scraped successfully"
                 cat response.json | jq '.' 2>/dev/null || cat response.json
               else
-                cat response.json
+                cat response.json 2>/dev/null || echo "No response"
               fi
               
               success=true
@@ -107,7 +130,7 @@ jobs:
               
               if [ $attempt -lt $max_attempts ]; then
                 # Exponential backoff with jitter
-                delay=$((attempt * 60 + RANDOM % 60))
+                delay=$((attempt * 45 + RANDOM % 30))
                 echo "⏳ Waiting ${delay}s before retry..."
                 sleep $delay
               fi
@@ -122,11 +145,17 @@ jobs:
           fi
 
   scrape-strategy-conservative:
+    needs: validate-environment
     if: github.event.inputs.strategy == 'conservative'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     
     steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y jq curl
+      
       - name: Conservative Scraping (Single Region, Slower)
         run: |
           echo "🐌 Conservative scraping strategy - prioritizing success over speed"
@@ -136,19 +165,18 @@ jobs:
             -H "User-Agent: Mozilla/5.0 (compatible; ConservativeBot/1.0)" \
             $([ -n "${{ secrets.CRON_SECRET }}" ] && echo "-H \"Authorization: Bearer ${{ secrets.CRON_SECRET }}\"") \
             -d '{
-              "mode": "batch",
+              "mode": "all",
               "strategy": "conservative",
-              "chunkSize": 2,
-              "chunkDelay": 10000
+              "source": "github-actions-conservative"
             }' \
             --connect-timeout 60 \
-            --max-time 600 \
+            --max-time 900 \
             "${{ secrets.APP_URL }}/api/scraping/batch" \
             -o response.json)
           
           http_code="${response: -3}"
           
-          if [ "$http_code" -eq 200 ]; then
+          if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 201 ]; then
             echo "✅ Conservative scraping completed"
             cat response.json | jq '.' || cat response.json
           else
@@ -158,18 +186,24 @@ jobs:
           fi
 
   scrape-strategy-test:
+    needs: validate-environment
     if: github.event.inputs.strategy == 'test'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     
     steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y jq curl
+      
       - name: Test Scraping (Limited)
         run: |
           echo "🧪 Test scraping - just checking if the system is responsive"
           
           # Test endpoint availability first
           health_check=$(curl -s -w "%{http_code}" \
-            "${{ secrets.APP_URL }}/api/scraping/batch" \
+            "${{ secrets.APP_URL }}/api/scraping/batch?detailed=true" \
             -o health.json)
           
           echo "Health check status: ${health_check: -3}"
@@ -180,7 +214,7 @@ jobs:
             response=$(curl -s -w "%{http_code}" -X POST \
               -H "Content-Type: application/json" \
               $([ -n "${{ secrets.CRON_SECRET }}" ] && echo "-H \"Authorization: Bearer ${{ secrets.CRON_SECRET }}\"") \
-              -d '{"mode": "batch", "limit": 3}' \
+              -d '{"mode": "batch", "strategy": "smart", "limit": 3, "source": "github-actions-test"}' \
               "${{ secrets.APP_URL }}/api/scraping/batch" \
               -o test_response.json)
             
@@ -193,22 +227,33 @@ jobs:
           fi
 
   monitor-and-report:
-    needs: [scrape-strategy-smart]
+    needs: [validate-environment, scrape-strategy-smart]
     if: always()
     runs-on: ubuntu-latest
     
     steps:
       - name: Generate Report
         run: |
-          echo "📊 Scraping Job Report"
-          echo "====================="
+          echo "📊 Multi-Strategy Scraping Job Report"
+          echo "===================================="
           echo "🕐 Completed at: $(date -u)"
           echo "🆔 Run ID: ${{ github.run_id }}"
           echo "🔗 Run URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "🎯 Strategy: ${{ github.event.inputs.strategy || 'smart' }}"
+          
+          # Check validation
+          if [ "${{ needs.validate-environment.result }}" != "success" ]; then
+            echo "❌ Environment validation: FAILED"
+            echo "💡 Please check your repository secrets configuration"
+          else
+            echo "✅ Environment validation: SUCCESS"
+          fi
           
           # Check job status
           if [ "${{ needs.scrape-strategy-smart.result }}" = "success" ]; then
             echo "✅ Smart scraping strategy: SUCCESS"
+          elif [ "${{ needs.scrape-strategy-smart.result }}" = "skipped" ]; then
+            echo "⏭️ Smart scraping strategy: SKIPPED"
           else
             echo "❌ Smart scraping strategy: FAILED"
             echo "🔍 Check the logs above for details"
@@ -216,4 +261,4 @@ jobs:
           
           echo ""
           echo "📱 You can view detailed results in your app's admin dashboard:"
-          echo "🌐 ${{ secrets.APP_URL }}/admin/offers"
+          echo "🌐 ${{ needs.validate-environment.outputs.app-url }}/admin/offers"

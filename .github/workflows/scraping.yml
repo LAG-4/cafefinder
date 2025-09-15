@@ -1,11 +1,14 @@
-name: Automated Offer Scraping
+name: Automated Offer Scraping (Disabled)
+
+# DISABLED: Use reliable-scraping.yml instead
+# This workflow has been replaced with a more robust version
 
 on:
-  schedule:
-    # Run every hour at minute 0 (00:00, 01:00, 02:00, etc.)
-    - cron: '0 * * * *'
+  # Disabled scheduled runs to prevent conflicts
+  # schedule:
+  #   - cron: '0 * * * *'
   
-  # Allow manual triggering from GitHub Actions tab
+  # Manual trigger only for testing
   workflow_dispatch:
     inputs:
       mode:
@@ -18,9 +21,26 @@ on:
           - batch
 
 jobs:
+  warning:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Deprecation Warning
+        run: |
+          echo "⚠️  WARNING: This workflow is deprecated!"
+          echo "🔄 Please use 'Reliable Offer Scraping' workflow instead"
+          echo "📁 File: .github/workflows/reliable-scraping.yml"
+          echo ""
+          echo "🚫 This workflow has been disabled to prevent conflicts."
+          echo "✅ The new workflow is more reliable and has better error handling."
+          echo ""
+          echo "🔗 Go to Actions tab and use 'Reliable Offer Scraping' workflow"
+          exit 0
+
   scrape-offers:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    if: false  # Disable this job
     
     steps:
       - name: Trigger Scraping

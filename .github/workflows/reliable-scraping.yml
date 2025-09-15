@@ -1,0 +1,185 @@
+name: Reliable Offer Scraping
+
+on:
+  schedule:
+    # Run every hour at minute 0
+    - cron: '0 * * * *'
+  
+  workflow_dispatch:
+    inputs:
+      strategy:
+        description: 'Scraping strategy'
+        required: false
+        default: 'smart'
+        type: choice
+        options:
+          - smart
+          - conservative
+          - test
+
+env:
+  MAX_RETRIES: 3
+  TIMEOUT_MINUTES: 15
+
+jobs:
+  scrape-offers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+          echo "✅ Dependencies installed"
+      
+      - name: Validate Environment
+        run: |
+          echo "🔍 Validating environment variables..."
+          
+          if [ -z "${{ secrets.APP_URL }}" ]; then
+            echo "❌ APP_URL secret is missing"
+            echo "Please add APP_URL to your repository secrets"
+            exit 1
+          fi
+          
+          echo "✅ APP_URL is configured"
+          echo "🌐 Target URL: ${{ secrets.APP_URL }}"
+      
+      - name: Health Check
+        run: |
+          echo "🏥 Performing health check..."
+          
+          response=$(curl -s -w "%{http_code}" \
+            "${{ secrets.APP_URL }}/api/scraping/batch?detailed=true" \
+            -o health.json)
+          
+          http_code="${response: -3}"
+          echo "Health check status: $http_code"
+          
+          if [ "$http_code" = "200" ]; then
+            echo "✅ Server is healthy"
+            if command -v jq &> /dev/null; then
+              cat health.json | jq '.service, .status' || cat health.json
+            else
+              cat health.json
+            fi
+          else
+            echo "❌ Server health check failed"
+            cat health.json || echo "No response"
+            exit 1
+          fi
+      
+      - name: Smart Scraping with Retry Logic
+        run: |
+          attempt=1
+          max_attempts=${{ env.MAX_RETRIES }}
+          success=false
+          strategy="${{ github.event.inputs.strategy || 'smart' }}"
+          
+          echo "🚀 Starting $strategy scraping strategy"
+          
+          while [ $attempt -le $max_attempts ] && [ "$success" = false ]; do
+            echo "📝 Attempt $attempt/$max_attempts"
+            
+            # Prepare request body based on strategy
+            case "$strategy" in
+              "conservative")
+                request_body='{"mode": "all", "strategy": "conservative", "source": "github-actions"}'
+                ;;
+              "test")
+                request_body='{"mode": "batch", "strategy": "smart", "limit": 3, "source": "github-actions-test"}'
+                ;;
+              *)
+                request_body='{"mode": "all", "strategy": "smart", "source": "github-actions"}'
+                ;;
+            esac
+            
+            echo "📤 Request: $request_body"
+            
+            response=$(curl -s -w "%{http_code}" -X POST \
+              -H "Content-Type: application/json" \
+              -H "User-Agent: GitHub-Actions-CafeFinderBot/1.0" \
+              -H "X-GitHub-Run-ID: ${{ github.run_id }}" \
+              $([ -n "${{ secrets.CRON_SECRET }}" ] && echo "-H \"Authorization: Bearer ${{ secrets.CRON_SECRET }}\"") \
+              -d "$request_body" \
+              --connect-timeout 30 \
+              --max-time 600 \
+              "${{ secrets.APP_URL }}/api/scraping/batch" \
+              -o response.json 2>/dev/null || echo "000")
+            
+            http_code="${response: -3}"
+            echo "📊 HTTP Status: $http_code"
+            
+            if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 201 ]; then
+              echo "✅ Scraping completed successfully!"
+              
+              # Parse and display results
+              if command -v jq &> /dev/null && [ -f response.json ]; then
+                success_count=$(cat response.json | jq -r '.result.success // .success // 0' 2>/dev/null || echo "unknown")
+                total_count=$(cat response.json | jq -r '.result.total // .total // 0' 2>/dev/null || echo "unknown")
+                echo "📈 Results: $success_count/$total_count items processed"
+                
+                # Show formatted response
+                echo "📋 Full Response:"
+                cat response.json | jq '.' 2>/dev/null || cat response.json
+              else
+                echo "📋 Response:"
+                cat response.json 2>/dev/null || echo "No response file"
+              fi
+              
+              success=true
+            else
+              echo "❌ Attempt $attempt failed with status $http_code"
+              
+              if [ -f response.json ]; then
+                echo "📋 Error Response:"
+                cat response.json
+              fi
+              
+              if [ $attempt -lt $max_attempts ]; then
+                # Progressive backoff: 30s, 60s, 90s
+                delay=$((attempt * 30))
+                echo "⏳ Waiting ${delay}s before retry..."
+                sleep $delay
+              fi
+            fi
+            
+            attempt=$((attempt + 1))
+          done
+          
+          if [ "$success" = false ]; then
+            echo "💥 All $max_attempts attempts failed"
+            echo "🔗 Check logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            exit 1
+          fi
+
+  report:
+    needs: [scrape-offers]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Generate Report
+        run: |
+          echo "📊 Scraping Job Report"
+          echo "====================="
+          echo "🕐 Completed at: $(date -u)"
+          echo "🆔 Run ID: ${{ github.run_id }}"
+          echo "🔗 Run URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "🎯 Strategy: ${{ github.event.inputs.strategy || 'smart' }}"
+          
+          if [ "${{ needs.scrape-offers.result }}" = "success" ]; then
+            echo "✅ Scraping: SUCCESS"
+            echo "🎉 All offers have been updated!"
+          else
+            echo "❌ Scraping: FAILED"
+            echo "🔍 Check the job logs above for details"
+            echo "💡 Common fixes:"
+            echo "   - Verify APP_URL secret is correct"
+            echo "   - Check if your Vercel deployment is running"
+            echo "   - Ensure CONVEX_URL is configured in your app"
+          fi
+          
+          echo ""
+          echo "📱 View results: ${{ secrets.APP_URL }}/admin/offers"
