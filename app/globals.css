@@ -25,6 +25,19 @@
   --overlay: rgba(0, 0, 0, 0.5);
 }
 
+/* Font family definitions */
+body {
+  font-family: var(--font-montserrat), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-montserrat), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+code, pre, .font-mono {
+  font-family: var(--font-fira-code), "SF Mono", Monaco, Inconsolata, "Roboto Mono", Consolas, "Courier New", monospace;
+}
+
 .dark {
   /* Dark theme colors */
   --background: #0a0a0a;

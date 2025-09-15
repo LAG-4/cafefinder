@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Montserrat, Fira_Code } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import { ThemeProvider } from "../components/theme-provider";
@@ -9,14 +9,18 @@ import { BGPattern } from "../components/ui/bg-pattern";
 import { Plus } from "lucide-react";
 import StructuredData from "../components/StructuredData";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const firaCode = Fira_Code({
+  variable: "--font-fira-code",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -147,7 +151,7 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#ee5a24" />
         <meta name="msapplication-navbutton-color" content="#ee5a24" />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100`}
+      <body className={`${montserrat.variable} ${firaCode.variable} antialiased bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100`}
       >
         <BGPattern 
           variant="dots" 

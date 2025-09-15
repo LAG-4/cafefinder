@@ -248,12 +248,12 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
               </div>
             </a>
           </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto p-0">
+          <DialogContent className="max-h-[95vh] overflow-y-auto p-0 mx-2 my-2 sm:mx-6 sm:my-6 max-w-4xl w-[calc(100vw-16px)] sm:w-full">
             <VisuallyHidden>
               <DialogTitle>{c.name} - Cafe Details</DialogTitle>
             </VisuallyHidden>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 min-h-[500px] sm:min-h-[600px]">
-              <div className="relative h-48 sm:h-80 lg:h-full min-h-[200px] sm:min-h-[300px]">
+            <div className="flex flex-col lg:grid lg:grid-cols-2 gap-0 min-h-[500px] sm:min-h-[600px]">
+              <div className="relative h-48 sm:h-64 lg:h-full min-h-[200px] sm:min-h-[300px]">
                 <Image 
                   src={isValidHttpUrl(c.image) ? c.image : "https://picsum.photos/800/600"} 
                   alt={c.name} 
@@ -268,12 +268,12 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
                   }}
                 />
               </div>
-              <div className="p-4 sm:p-6 flex flex-col">
+              <div className="p-4 sm:p-6 flex flex-col min-h-[400px]">
                 <div className="mb-4 sm:mb-6">
-                  <h3 className="text-2xl sm:text-3xl font-semibold mb-2">{c.name}</h3>
-                  <p className="mb-2" style={{ color: 'var(--muted-foreground)' }}>{c.type} · {c.area}</p>
+                  <h3 className="text-xl sm:text-2xl lg:text-3xl font-semibold mb-2">{c.name}</h3>
+                  <p className="mb-3 text-sm sm:text-base" style={{ color: 'var(--muted-foreground)' }}>{c.type} · {c.area}</p>
                   <div 
-                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium"
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium"
                     style={{ 
                       backgroundColor: 'var(--accent)', 
                       color: 'var(--primary)' 
@@ -284,38 +284,40 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
                 </div>
 
                 <Tabs defaultValue="overview" className="flex-1">
-                  <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 mb-4 text-xs sm:text-sm">
-                    <TabsTrigger value="overview" className="px-1 sm:px-3">Overview</TabsTrigger>
-                    <TabsTrigger value="scores" className="px-1 sm:px-3">Scores</TabsTrigger>
-                    <TabsTrigger value="vibe" className="px-1 sm:px-3">Vibe</TabsTrigger>
-                    <TabsTrigger value="practical" className="hidden sm:block px-1 sm:px-3">Practical</TabsTrigger>
-                    <TabsTrigger value="inclusion" className="hidden sm:block px-1 sm:px-3">Inclusion</TabsTrigger>
-                  </TabsList>
+                  <div className="w-full overflow-x-auto mb-4">
+                    <TabsList className="flex w-max min-w-full lg:w-full lg:grid lg:grid-cols-5 h-auto p-1 gap-1 bg-zinc-100 dark:bg-zinc-800">
+                      <TabsTrigger value="overview" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-zinc-900 dark:data-[state=active]:bg-zinc-900 dark:data-[state=active]:text-zinc-100">Overview</TabsTrigger>
+                      <TabsTrigger value="scores" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-zinc-900 dark:data-[state=active]:bg-zinc-900 dark:data-[state=active]:text-zinc-100">Scores</TabsTrigger>
+                      <TabsTrigger value="vibe" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-zinc-900 dark:data-[state=active]:bg-zinc-900 dark:data-[state=active]:text-zinc-100">Vibe</TabsTrigger>
+                      <TabsTrigger value="practical" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-zinc-900 dark:data-[state=active]:bg-zinc-900 dark:data-[state=active]:text-zinc-100">Practical</TabsTrigger>
+                      <TabsTrigger value="inclusion" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-zinc-900 dark:data-[state=active]:bg-zinc-900 dark:data-[state=active]:text-zinc-100">Inclusion</TabsTrigger>
+                    </TabsList>
+                  </div>
 
                   <TabsContent value="overview" className="space-y-3 sm:space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
                       <div 
-                        className="p-3 sm:p-4 rounded-lg"
+                        className="p-4 sm:p-4 rounded-lg"
                         style={{ backgroundColor: 'var(--muted)' }}
                       >
                         <div 
-                          className="text-xl sm:text-2xl font-bold"
+                          className="text-2xl sm:text-2xl font-bold"
                           style={{ color: 'var(--primary)' }}
                         >
                           {c.scores.overall.toFixed(2)}/100
                         </div>
-                        <div className="text-xs sm:text-sm" style={{ color: 'var(--muted-foreground)' }}>Overall Score</div>
+                        <div className="text-sm sm:text-sm" style={{ color: 'var(--muted-foreground)' }}>Overall Score</div>
                       </div>
                       <div 
-                        className="p-3 sm:p-4 rounded-lg"
+                        className="p-4 sm:p-4 rounded-lg"
                         style={{ backgroundColor: 'var(--muted)' }}
                       >
-                        <div className="text-xl sm:text-2xl font-bold text-emerald-600">{parseFloat(c.raw["Aesthetic_Score"] || "0").toFixed(2)}</div>
-                        <div className="text-xs sm:text-sm" style={{ color: 'var(--muted-foreground)' }}>Aesthetic Score</div>
+                        <div className="text-2xl sm:text-2xl font-bold text-emerald-600">{parseFloat(c.raw["Aesthetic_Score"] || "0").toFixed(2)}</div>
+                        <div className="text-sm sm:text-sm" style={{ color: 'var(--muted-foreground)' }}>Aesthetic Score</div>
                       </div>
                     </div>
                     
-                    <div className="space-y-2 sm:space-y-3">
+                    <div className="space-y-3 sm:space-y-3">
                       <KeyVal label="Location" value={c.raw["Location"]} />
                       <KeyVal label="Type" value={c.raw["Type"]} />
                       <KeyVal label="Crowd Vibe" value={c.raw["Crowd Vibe (Chill, Lively, Too Rowdy, etc.)"]} />
@@ -324,10 +326,10 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
                       <KeyVal label="Safety" value={c.raw["Safety (General Safety and Safe for Women/LGBTQ+)"]} />
                     </div>
                     
-                    <div className="mt-4 sm:mt-6 p-3 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--muted)' }}>
-                      <div className="text-xs sm:text-sm font-medium mb-2" style={{ color: 'var(--muted-foreground)' }}>📍 Map View</div>
+                    <div className="mt-4 sm:mt-6 p-4 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--muted)' }}>
+                      <div className="text-sm sm:text-sm font-medium mb-3" style={{ color: 'var(--muted-foreground)' }}>📍 Map View</div>
                       <div 
-                        className="h-24 sm:h-32 rounded flex items-center justify-center text-xs sm:text-sm"
+                        className="h-32 sm:h-32 rounded flex items-center justify-center text-sm sm:text-sm"
                         style={{ 
                           backgroundColor: 'var(--border)', 
                           color: 'var(--muted-foreground)' 
@@ -339,7 +341,7 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
                   </TabsContent>
 
                   <TabsContent value="scores">
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                       {["Food Quality and Taste","Drink Quality and Selection","Ambiance and Interior Comfort","Music Quality and Volume","Service Speed","Staff Friendliness and Attentiveness","Cleanliness and Hygiene","Value for Money / Pricing"].map((k) => (
                         <Bar key={k} label={k} value={c.raw[k]} />
                       ))}
@@ -347,7 +349,7 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
                   </TabsContent>
 
                   <TabsContent value="vibe">
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <KeyVal label="Community Vibe" value={c.raw["Community Vibe (Welcoming, Regulars, Neutral Ground Feel)"]} />
                       <KeyVal label="Lighting" value={c.raw["Lighting (Brightness & Mood Suitability)"]} />
                       <KeyVal label="Noise Level" value={c.raw["Noise Level"]} />
@@ -357,7 +359,7 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
                   </TabsContent>
 
                   <TabsContent value="practical">
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <KeyVal label="Wi‑Fi" value={c.raw["Wi-Fi Speed and Reliability"]} />
                       <KeyVal label="Laptop/Work Friendly" value={c.raw["Laptop/Work Friendliness (For Cafes)"]} />
                       <KeyVal label="Power Outlets" value={c.raw["Availability of Power Outlets"]} />
@@ -370,7 +372,7 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
                   </TabsContent>
 
                   <TabsContent value="inclusion">
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <KeyVal label="Safety (general + women/LGBTQ+)" value={c.raw["Safety (General Safety and Safe for Women/LGBTQ+)"]} />
                       <KeyVal label="Inclusion/Friendliness to Foreigners" value={c.raw["Inclusion/Friendliness to Foreigners"]} />
                       <KeyVal label="Racism-Free Environment" value={c.raw["Racism-Free Environment"]} />
@@ -400,19 +402,22 @@ function Bar({ label, value }: { label: string; value: string }) {
   };
   
   return (
-    <div className="flex items-center gap-3">
-      <div className="w-52 text-xs flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+      <div className="w-full sm:w-52 text-sm sm:text-xs flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
         <Emoji label={label} />
         {label}
       </div>
-      <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
-        <div 
-          className="h-full transition-all duration-300" 
-          style={{ 
-            width: `${v}%`,
-            backgroundColor: getColor(v)
-          }} 
-        />
+      <div className="flex items-center gap-3 flex-1">
+        <div className="flex-1 min-w-0 h-5 sm:h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
+          <div 
+            className="h-full transition-all duration-300" 
+            style={{ 
+              width: `${v}%`,
+              backgroundColor: getColor(v)
+            }} 
+          />
+        </div>
+        <div className="text-xs font-medium w-16 sm:w-auto flex-shrink-0" style={{ color: 'var(--foreground)' }}>{value}</div>
       </div>
     </div>
   );
@@ -436,13 +441,13 @@ function KeyVal({ label, value }: { label: string; value?: string }) {
     };
     
     return (
-      <div className="flex items-center gap-3 text-sm">
-        <div className="w-56 flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-sm">
+        <div className="w-full sm:w-56 flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
           <Emoji label={label} />
           {label}
         </div>
-        <div className="flex-1 flex items-center gap-3">
-          <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
+        <div className="flex items-center gap-3 flex-1">
+          <div className="flex-1 min-w-0 h-5 sm:h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
             <div 
               className="h-full transition-all duration-300" 
               style={{ 
@@ -451,15 +456,15 @@ function KeyVal({ label, value }: { label: string; value?: string }) {
               }} 
             />
           </div>
-          <div className="w-20 text-xs font-medium" style={{ color: 'var(--foreground)' }}>{value}</div>
+          <div className="w-20 text-xs font-medium flex-shrink-0" style={{ color: 'var(--foreground)' }}>{value}</div>
         </div>
       </div>
     );
   }
   
   return (
-    <div className="flex items-center gap-3 text-sm">
-      <div className="w-56 flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-sm">
+      <div className="w-full sm:w-56 flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
         <Emoji label={label} />
         {label}
       </div>
