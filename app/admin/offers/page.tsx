@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import AdminProtected from '@/components/AdminProtected';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -180,16 +181,13 @@ export default function AdminOffersPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">All Offers Dashboard</h1>
-          <p className="text-gray-600 mt-2">
-            Manage and monitor scraped offers from all restaurants
-          </p>
-        </div>
-        <div className="flex gap-2">
+    <AdminProtected 
+      title="All Offers Dashboard" 
+      description="Manage and monitor scraped offers from all restaurants"
+    >
+      <div className="container mx-auto px-4">
+        {/* Controls */}
+        <div className="flex gap-2 mb-6">
           <Button 
             onClick={triggerFullScraping} 
             variant="default"
@@ -208,7 +206,6 @@ export default function AdminOffersPage() {
             Refresh
           </Button>
         </div>
-      </div>
 
       {/* Scraping Status */}
       {scrapingStatus && (
@@ -436,6 +433,7 @@ export default function AdminOffersPage() {
           Last updated: {formatDate(data.lastUpdated)}
         </div>
       )}
-    </div>
+      </div>
+    </AdminProtected>
   );
 }

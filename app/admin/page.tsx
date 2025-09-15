@@ -1,5 +1,6 @@
 'use client';
 
+import AdminProtected from '@/components/AdminProtected';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -13,13 +14,10 @@ import Link from 'next/link';
 
 export default function AdminPage() {
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <p className="text-gray-600 mt-2">
-          Manage your restaurant offers and scraping system
-        </p>
-      </div>
+    <AdminProtected 
+      title="Admin Dashboard" 
+      description="Manage your restaurant offers and scraping system"
+    >
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Offers Management */}
@@ -150,6 +148,6 @@ export default function AdminPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </AdminProtected>
   );
 }

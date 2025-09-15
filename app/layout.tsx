@@ -185,13 +185,6 @@ export default function RootLayout({
               </div>
                 <div className="hidden md:block text-sm" style={{ color: 'var(--muted-foreground)' }}>Hyderabad hangouts for food, work and fun</div>
                 <div className="flex items-center gap-4">
-                  <Link 
-                    href="/admin" 
-                    className="text-xs opacity-50 hover:opacity-100 transition-opacity"
-                    style={{ color: 'var(--muted-foreground)' }}
-                  >
-                    admin
-                  </Link>
                   <ThemeToggle />
                   <a 
                     href="#" 

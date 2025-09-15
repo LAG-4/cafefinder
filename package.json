@@ -17,7 +17,9 @@
     "scraper:fast-init": "tsx scripts/scrape-offers-fast.ts --init",
     "scraper:fast-all": "tsx scripts/scrape-offers-fast.ts --all",
     "scraper:fast-batch": "tsx scripts/scrape-offers-fast.ts --batch",
-    "scraper:fast-continuous": "tsx scripts/scrape-offers-fast.ts"
+    "scraper:fast-continuous": "tsx scripts/scrape-offers-fast.ts",
+    "cleanup:offers": "tsx scripts/cleanup-offers.ts",
+    "cleanup:daily": "tsx scripts/daily-maintenance.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

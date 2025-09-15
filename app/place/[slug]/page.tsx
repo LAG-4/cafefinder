@@ -124,7 +124,7 @@ export default function PlacePage({ params }: PlacePageProps) {
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg overflow-hidden">
           {/* Hero Image */}
-          <div className="aspect-[16/9] relative">
+          <div className="relative h-64 sm:h-80 lg:h-96">
             <Image
               src={place.image}
               alt={`${place.name} in ${place.area}`}

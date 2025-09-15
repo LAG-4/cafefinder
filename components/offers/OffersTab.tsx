@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { OfferCard } from './OfferCard';
+import OfferCard from './OfferCard';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Loader2, RefreshCw, AlertCircle, Gift } from 'lucide-react';
 
 type Offer = {
@@ -32,6 +33,15 @@ interface OffersTabProps {
   onOfferClick?: (offer: Offer) => void;
   onOffersLoaded?: (count: number) => void;
 }
+
+const platformNames: Record<string, string> = {
+  zomato: 'Zomato',
+  swiggy: 'Swiggy',
+  dineout: 'Dineout',
+  eazydiner: 'EazyDiner',
+  magicpin: 'MagicPin',
+  other: 'Other',
+};
 
 export function OffersTab({ slug, onOfferClick, onOffersLoaded }: OffersTabProps) {
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -113,8 +123,8 @@ export function OffersTab({ slug, onOfferClick, onOffersLoaded }: OffersTabProps
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-400" />
-          <p className="text-sm text-gray-500">Loading offers...</p>
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" style={{ color: 'var(--muted-foreground)' }} />
+          <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Loading offers...</p>
         </div>
       </div>
     );
@@ -124,13 +134,18 @@ export function OffersTab({ slug, onOfferClick, onOffersLoaded }: OffersTabProps
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center max-w-md">
-          <AlertCircle className="w-8 h-8 mx-auto mb-4 text-red-400" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Unable to load offers</h3>
-          <p className="text-sm text-gray-500 mb-4">{error}</p>
+          <AlertCircle className="w-8 h-8 mx-auto mb-4" style={{ color: 'var(--destructive)' }} />
+          <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--foreground)' }}>Unable to load offers</h3>
+          <p className="text-sm mb-4" style={{ color: 'var(--muted-foreground)' }}>{error}</p>
           <Button 
             onClick={() => fetchOffers()}
             size="sm"
             variant="outline"
+            style={{ 
+              borderColor: 'var(--border)', 
+              backgroundColor: 'var(--background)',
+              color: 'var(--foreground)' 
+            }}
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Try again
@@ -144,87 +159,97 @@ export function OffersTab({ slug, onOfferClick, onOffersLoaded }: OffersTabProps
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center max-w-md">
-          <Gift className="w-8 h-8 mx-auto mb-4 text-gray-400" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No offers available</h3>
-          <p className="text-sm text-gray-500 mb-4">
+          <Gift className="w-8 h-8 mx-auto mb-4" style={{ color: 'var(--muted-foreground)' }} />
+          <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--foreground)' }}>No offers available</h3>
+          <p className="text-sm mb-4" style={{ color: 'var(--muted-foreground)' }}>
             There are currently no offers for this place. Check back later for new deals!
           </p>
           {lastUpdated && (
-            <p className="text-xs text-gray-400">{formatLastUpdated(lastUpdated)}</p>
+            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{formatLastUpdated(lastUpdated)}</p>
           )}
         </div>
       </div>
     );
   }
   
+  // Group offers by platform
+  const offersByPlatform = offers.reduce((acc, offer) => {
+    if (!acc[offer.platform]) {
+      acc[offer.platform] = [];
+    }
+    acc[offer.platform].push(offer);
+    return acc;
+  }, {} as Record<string, Offer[]>);
+  
+  const platforms = Object.keys(offersByPlatform).sort();
+  
   return (
-    <div className="space-y-4">
-      {/* Header with refresh info */}
+    <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Current Offers ({offers.length})
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-base font-semibold" style={{ color: 'var(--foreground)' }}>
+              {offers.length} Offer{offers.length === 1 ? '' : 's'} Available
             </h3>
-            {/* Platform count badge */}
-            {(() => {
-              const platformCount = new Set(offers.map(o => o.platform)).size;
-              return platformCount > 1 ? (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                  {platformCount} platforms
-                </span>
-              ) : null;
-            })()}
+            {platforms.length > 1 && (
+              <Badge 
+                className="text-xs font-medium px-1.5 py-0.5" 
+                style={{ 
+                  backgroundColor: 'var(--muted)', 
+                  color: 'var(--muted-foreground)',
+                  border: '1px solid var(--border)',
+                  fontSize: '10px'
+                }}
+              >
+                {platforms.length} platform{platforms.length === 1 ? '' : 's'}
+              </Badge>
+            )}
           </div>
           {lastUpdated && (
-            <p className="text-sm text-gray-500">{formatLastUpdated(lastUpdated)}</p>
+            <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+              {formatLastUpdated(lastUpdated)}
+            </p>
           )}
-          {/* Platform breakdown */}
-          {(() => {
-            const platformCounts = offers.reduce((acc, offer) => {
-              acc[offer.platform] = (acc[offer.platform] || 0) + 1;
-              return acc;
-            }, {} as Record<string, number>);
-            
-            return Object.keys(platformCounts).length > 1 ? (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {Object.entries(platformCounts).map(([platform, count]) => (
-                  <span
-                    key={platform}
-                    className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                  >
-                    {platform.toUpperCase()}: {count}
-                  </span>
-                ))}
-              </div>
-            ) : null;
-          })()}
         </div>
         <Button
           onClick={() => fetchOffers(true)}
           size="sm"
           variant="outline"
           disabled={refreshing}
+          className="h-7"
+          style={{ 
+            borderColor: 'var(--border)', 
+            backgroundColor: 'var(--background)',
+            color: 'var(--foreground)',
+            fontSize: '11px'
+          }}
         >
           {refreshing ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
           ) : (
-            <RefreshCw className="w-4 h-4 mr-2" />
+            <RefreshCw className="w-3 h-3 mr-1.5" />
           )}
           Refresh
         </Button>
       </div>
       
-      {/* Provider errors (if any) */}
+      {/* Provider errors */}
       {providerErrors.length > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+        <div 
+          className="rounded-lg p-3 border"
+          style={{ 
+            backgroundColor: 'var(--muted)', 
+            borderColor: 'var(--border)' 
+          }}
+        >
           <div className="flex">
-            <AlertCircle className="w-4 h-4 text-yellow-400 mt-0.5 mr-2 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" style={{ color: 'var(--destructive)' }} />
             <div>
-              <h4 className="text-sm font-medium text-yellow-800">
+              <h4 className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
                 Some platforms couldn&apos;t be checked
               </h4>
-              <div className="mt-1 text-xs text-yellow-700">
+              <div className="mt-1 text-xs space-y-0.5" style={{ color: 'var(--muted-foreground)' }}>
                 {providerErrors.map((error, index) => (
                   <div key={index}>
                     {error.platform}: {error.reason}
@@ -236,21 +261,50 @@ export function OffersTab({ slug, onOfferClick, onOffersLoaded }: OffersTabProps
         </div>
       )}
       
-      {/* Offers list */}
-      <div className="space-y-3">
-        {offers.map((offer) => (
-          <OfferCard
-            key={offer.id}
-            offer={offer}
-            onLinkClick={onOfferClick}
-          />
-        ))}
+      {/* Offers grouped by platform */}
+      <div className="space-y-4">
+        {platforms.map((platform) => {
+          const platformOffers = offersByPlatform[platform];
+          const platformName = platformNames[platform] || platform.charAt(0).toUpperCase() + platform.slice(1);
+          
+          return (
+            <div key={platform} className="space-y-2.5">
+              {/* Platform header */}
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>
+                  {platformName}
+                </h4>
+                <Badge 
+                  className="text-xs font-medium px-1.5 py-0.5"
+                  style={{ 
+                    backgroundColor: 'var(--primary)', 
+                    color: 'var(--primary-foreground)',
+                    fontSize: '10px'
+                  }}
+                >
+                  {platformOffers.length}
+                </Badge>
+              </div>
+              
+              {/* Platform offers grid - more compact */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                {platformOffers.map((offer) => (
+                  <OfferCard
+                    key={offer.id}
+                    offer={offer}
+                    onLinkClick={onOfferClick}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
       
-      {/* Footer note */}
-      <div className="text-center py-4">
-        <p className="text-xs text-gray-400">
-          Offers are updated every 30 minutes. Terms and conditions apply.
+      {/* Footer */}
+      <div className="text-center py-2 border-t" style={{ borderColor: 'var(--border)' }}>
+        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+          Updated every 30 minutes • Terms apply
         </p>
       </div>
     </div>

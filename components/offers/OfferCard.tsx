@@ -1,9 +1,9 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Clock, Tag, Info } from 'lucide-react';
+import { ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 
 type Offer = {
@@ -25,25 +25,7 @@ interface OfferCardProps {
   onLinkClick?: (offer: Offer) => void;
 }
 
-const platformColors: Record<string, string> = {
-  zomato: 'bg-red-100 text-red-800 border-red-200',
-  swiggy: 'bg-orange-100 text-orange-800 border-orange-200',
-  dineout: 'bg-blue-100 text-blue-800 border-blue-200',
-  eazydiner: 'bg-purple-100 text-purple-800 border-purple-200',
-  magicpin: 'bg-green-100 text-green-800 border-green-200',
-  other: 'bg-gray-100 text-gray-800 border-gray-200',
-};
-
-const platformNames: Record<string, string> = {
-  zomato: 'Zomato',
-  swiggy: 'Swiggy',
-  dineout: 'Dineout',
-  eazydiner: 'EazyDiner',
-  magicpin: 'MagicPin',
-  other: 'Other',
-};
-
-export function OfferCard({ offer, onLinkClick }: OfferCardProps) {
+export default function OfferCard({ offer, onLinkClick }: OfferCardProps) {
   const [showTerms, setShowTerms] = useState(false);
   
   const handleLinkClick = () => {
@@ -51,14 +33,6 @@ export function OfferCard({ offer, onLinkClick }: OfferCardProps) {
     if (offer.deepLink) {
       window.open(offer.deepLink, '_blank', 'noopener,noreferrer');
     }
-  };
-  
-  const formatPlatformName = (platform: string) => {
-    return platformNames[platform] || platform.charAt(0).toUpperCase() + platform.slice(1);
-  };
-  
-  const getPlatformColor = (platform: string) => {
-    return platformColors[platform] || platformColors.other;
   };
   
   const getDiscountDisplay = () => {
@@ -77,10 +51,10 @@ export function OfferCard({ offer, onLinkClick }: OfferCardProps) {
       const fetched = new Date(fetchedAt);
       const diffMinutes = Math.floor((now.getTime() - fetched.getTime()) / (1000 * 60));
       
-      if (diffMinutes < 1) return 'Just now';
-      if (diffMinutes < 60) return `${diffMinutes}m ago`;
-      if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h ago`;
-      return `${Math.floor(diffMinutes / 1440)}d ago`;
+      if (diffMinutes < 1) return 'Now';
+      if (diffMinutes < 60) return `${diffMinutes}m`;
+      if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h`;
+      return `${Math.floor(diffMinutes / 1440)}d`;
     } catch {
       return '';
     }
@@ -89,91 +63,135 @@ export function OfferCard({ offer, onLinkClick }: OfferCardProps) {
   const discountDisplay = getDiscountDisplay();
   
   return (
-    <Card className="p-4 hover:shadow-md transition-shadow duration-200">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          {/* Platform badge and discount */}
-          <div className="flex items-center gap-2 mb-2">
+    <Card 
+      className="group transition-all duration-200 hover:shadow-md border"
+      style={{ 
+        borderColor: 'var(--border)', 
+        backgroundColor: 'var(--card)'
+      }}
+    >
+      <CardContent className="p-2">
+        {/* Compact header */}
+        <div className="flex items-start justify-between mb-1.5">
+          {discountDisplay && (
             <Badge 
-              variant="secondary" 
-              className={`text-xs font-medium ${getPlatformColor(offer.platform)}`}
+              className="text-xs font-bold px-1.5 py-0.5 rounded border-0"
+              style={{ 
+                backgroundColor: 'var(--primary)', 
+                color: 'var(--primary-foreground)',
+                fontSize: '10px'
+              }}
             >
-              {formatPlatformName(offer.platform)}
+              {discountDisplay}
             </Badge>
-            {discountDisplay && (
-              <Badge variant="outline" className="text-xs font-semibold text-green-700 bg-green-50">
-                <Tag className="w-3 h-3 mr-1" />
-                {discountDisplay}
-              </Badge>
-            )}
-          </div>
-          
-          {/* Title */}
-          <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">
-            {offer.title}
-          </h3>
-          
-          {/* Description */}
-          {offer.description && (
-            <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-              {offer.description}
-            </p>
           )}
-          
-          {/* Validity and min spend */}
-          <div className="flex flex-wrap gap-3 text-xs text-gray-500 mb-3">
-            {offer.validityText && (
-              <div className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                <span>{offer.validityText}</span>
-              </div>
-            )}
-            {offer.minSpend && (
-              <div className="flex items-center gap-1">
-                <span>Min: ₹{offer.minSpend}</span>
-              </div>
-            )}
-            <div className="flex items-center gap-1">
-              <span>{timeAgo(offer.fetchedAt)}</span>
-            </div>
-          </div>
-          
-          {/* Terms toggle */}
-          {offer.terms && offer.terms.length > 0 && (
-            <div className="mb-3">
-              <button
-                onClick={() => setShowTerms(!showTerms)}
-                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
-              >
-                <Info className="w-3 h-3" />
-                {showTerms ? 'Hide' : 'Show'} terms
-              </button>
-              {showTerms && (
-                <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600">
-                  {offer.terms.map((term, index) => (
-                    <div key={index} className="mb-1 last:mb-0">
-                      • {term}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          <span 
+            className="text-xs"
+            style={{ color: 'var(--muted-foreground)', fontSize: '10px' }}
+          >
+            {timeAgo(offer.fetchedAt)}
+          </span>
         </div>
         
-        {/* Action button */}
-        <div className="flex-shrink-0">
+        {/* Compact title */}
+        <h3 
+          className="font-medium mb-1 line-clamp-2 leading-tight"
+          style={{ color: 'var(--foreground)', fontSize: '13px' }}
+        >
+          {offer.title}
+        </h3>
+        
+        {/* Description */}
+        {offer.description && (
+          <p 
+            className="mb-1.5 line-clamp-1 leading-tight"
+            style={{ color: 'var(--muted-foreground)', fontSize: '11px' }}
+          >
+            {offer.description}
+          </p>
+        )}
+        
+        {/* Compact metadata */}
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-1.5 text-xs">
+            {offer.validityText && (
+              <span 
+                className="px-1.5 py-0.5 rounded truncate max-w-16"
+                style={{ 
+                  backgroundColor: 'var(--muted)', 
+                  color: 'var(--muted-foreground)',
+                  fontSize: '10px'
+                }}
+              >
+                {offer.validityText}
+              </span>
+            )}
+            {offer.minSpend && (
+              <span 
+                className="px-1.5 py-0.5 rounded"
+                style={{ 
+                  backgroundColor: 'var(--muted)', 
+                  color: 'var(--muted-foreground)',
+                  fontSize: '10px'
+                }}
+              >
+                ₹{offer.minSpend}+
+              </span>
+            )}
+          </div>
+          
           <Button
             onClick={handleLinkClick}
             size="sm"
-            className="whitespace-nowrap"
+            className="h-5 px-1.5 transition-all duration-200"
             disabled={!offer.deepLink}
+            style={{ 
+              backgroundColor: 'var(--primary)', 
+              color: 'var(--primary-foreground)',
+              fontSize: '9px'
+            }}
           >
-            <ExternalLink className="w-4 h-4 mr-1" />
-            View on {formatPlatformName(offer.platform)}
+            <ExternalLink className="w-2.5 h-2.5 mr-0.5" />
+            View
           </Button>
         </div>
-      </div>
+        
+        {/* Compact terms toggle */}
+        {offer.terms && offer.terms.length > 0 && (
+          <div>
+            <button
+              onClick={() => setShowTerms(!showTerms)}
+              className="flex items-center gap-1 transition-colors hover:opacity-80"
+              style={{ color: 'var(--primary)', fontSize: '10px' }}
+            >
+              {showTerms ? (
+                <ChevronUp className="w-3 h-3" />
+              ) : (
+                <ChevronDown className="w-3 h-3" />
+              )}
+              Terms
+            </button>
+            {showTerms && (
+              <div 
+                className="mt-1.5 p-1.5 rounded border space-y-0.5"
+                style={{ 
+                  backgroundColor: 'var(--muted)', 
+                  borderColor: 'var(--border)',
+                  color: 'var(--muted-foreground)',
+                  fontSize: '9px'
+                }}
+              >
+                {offer.terms.map((term, index) => (
+                  <div key={index} className="flex items-start gap-1.5">
+                    <span style={{ color: 'var(--primary)' }} className="mt-0.5">•</span>
+                    <span className="leading-relaxed">{term}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
     </Card>
   );
 }

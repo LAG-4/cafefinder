@@ -102,8 +102,11 @@ export const replaceOffersForPlace = mutation({
       await ctx.db.delete(offer._id);
     }
 
+    // Remove duplicates from new offers before inserting
+    const uniqueOffers = removeDuplicatesFromArray(args.offers);
+
     // Insert new offers
-    const insertPromises = args.offers.map(offer => 
+    const insertPromises = uniqueOffers.map(offer => 
       ctx.db.insert("offers", {
         placeSlug: args.placeSlug,
         platform: args.platform,
@@ -114,9 +117,48 @@ export const replaceOffersForPlace = mutation({
     );
 
     await Promise.all(insertPromises);
-    return args.offers.length;
+    
+    const duplicatesRemoved = args.offers.length - uniqueOffers.length;
+    if (duplicatesRemoved > 0) {
+      console.log(`Removed ${duplicatesRemoved} duplicates for ${args.placeSlug}:${args.platform}`);
+    }
+    
+    return uniqueOffers.length;
   },
 });
+
+// Helper function to remove duplicates from offers array
+function removeDuplicatesFromArray(offers: any[]): any[] {
+  const uniqueOffers: any[] = [];
+  
+  for (const offer of offers) {
+    const isDuplicate = uniqueOffers.some(unique => {
+      // Check if titles are similar (allowing for minor variations)
+      const titleSimilarity = calculateSimilarity(offer.title.toLowerCase(), unique.title.toLowerCase());
+      
+      // Check if discount percentages are the same
+      const sameDiscount = offer.discountPct === unique.discountPct;
+      
+      // Check if descriptions are similar (if both exist)
+      let descSimilarity = 1;
+      if (offer.description && unique.description) {
+        descSimilarity = calculateSimilarity(
+          offer.description.toLowerCase(), 
+          unique.description.toLowerCase()
+        );
+      }
+      
+      // Consider duplicate if title is very similar (>80%) or exact discount match with similar title (>60%)
+      return titleSimilarity > 0.8 || (sameDiscount && titleSimilarity > 0.6 && descSimilarity > 0.7);
+    });
+    
+    if (!isDuplicate) {
+      uniqueOffers.push(offer);
+    }
+  }
+  
+  return uniqueOffers;
+}
 
 // Mark offers as inactive if they weren't found in latest scrape (legacy function)
 export const markOffersInactive = mutation({
@@ -232,3 +274,201 @@ export const getAllPlacesForScraping = query({
     return await ctx.db.query("scrapingStatus").collect();
   },
 });
+
+// Clean up old/inactive offers (admin function)
+export const cleanupOldOffers = mutation({
+  args: { 
+    olderThanDays: v.optional(v.number()), // Default 7 days
+    dryRun: v.optional(v.boolean()) // Preview what would be deleted
+  },
+  handler: async (ctx, args) => {
+    const daysOld = args.olderThanDays || 7;
+    const cutoffDate = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000).toISOString();
+    
+    // Find old offers
+    const oldOffers = await ctx.db
+      .query("offers")
+      .filter((q) => q.lt(q.field("fetchedAt"), cutoffDate))
+      .collect();
+    
+    // Find inactive offers
+    const inactiveOffers = await ctx.db
+      .query("offers")
+      .filter((q) => q.eq(q.field("isActive"), false))
+      .collect();
+    
+    const toDelete = [...oldOffers, ...inactiveOffers];
+    const uniqueToDelete = toDelete.filter((offer, index, self) => 
+      index === self.findIndex(o => o._id === offer._id)
+    );
+    
+    if (args.dryRun) {
+      return {
+        wouldDelete: uniqueToDelete.length,
+        oldOffers: oldOffers.length,
+        inactiveOffers: inactiveOffers.length,
+        cutoffDate,
+        preview: uniqueToDelete.slice(0, 5).map(o => ({
+          id: o._id,
+          place: o.placeSlug,
+          platform: o.platform,
+          title: o.title,
+          fetchedAt: o.fetchedAt,
+          isActive: o.isActive
+        }))
+      };
+    }
+    
+    // Delete old/inactive offers
+    for (const offer of uniqueToDelete) {
+      await ctx.db.delete(offer._id);
+    }
+    
+    return {
+      deleted: uniqueToDelete.length,
+      oldOffers: oldOffers.length,
+      inactiveOffers: inactiveOffers.length,
+      cutoffDate
+    };
+  },
+});
+
+// Advanced cleanup: Keep only latest batch and remove duplicates
+export const advancedCleanup = mutation({
+  args: { 
+    dryRun: v.optional(v.boolean()),
+    keepOnlyLatestBatch: v.optional(v.boolean()),
+    removeDuplicates: v.optional(v.boolean())
+  },
+  handler: async (ctx, args) => {
+    const allOffers = await ctx.db.query("offers").collect();
+    
+    // Group by place and platform
+    const groupedOffers = allOffers.reduce((acc, offer) => {
+      const key = `${offer.placeSlug}:${offer.platform}`;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(offer);
+      return acc;
+    }, {} as Record<string, typeof allOffers>);
+    
+    let toDelete: typeof allOffers = [];
+    let duplicatesRemoved = 0;
+    let oldBatchesRemoved = 0;
+    
+    for (const [key, offers] of Object.entries(groupedOffers)) {
+      // Sort by fetchedAt descending (newest first)
+      offers.sort((a, b) => new Date(b.fetchedAt).getTime() - new Date(a.fetchedAt).getTime());
+      
+      if (args.keepOnlyLatestBatch) {
+        // Find the latest batch (offers with the same fetchedAt)
+        const latestFetchTime = offers[0].fetchedAt;
+        const latestBatch = offers.filter(o => o.fetchedAt === latestFetchTime);
+        const oldBatches = offers.filter(o => o.fetchedAt !== latestFetchTime);
+        
+        toDelete.push(...oldBatches);
+        oldBatchesRemoved += oldBatches.length;
+        
+        // Work with latest batch for duplicate removal
+        offers.splice(0, offers.length, ...latestBatch);
+      }
+      
+      if (args.removeDuplicates && offers.length > 1) {
+        // Intelligent duplicate detection
+        const uniqueOffers: typeof offers = [];
+        const duplicates: typeof offers = [];
+        
+        for (const offer of offers) {
+          const isDuplicate = uniqueOffers.some(unique => {
+            // Check if titles are similar (allowing for minor variations)
+            const titleSimilarity = calculateSimilarity(offer.title.toLowerCase(), unique.title.toLowerCase());
+            
+            // Check if discount percentages are the same
+            const sameDiscount = offer.discountPct === unique.discountPct;
+            
+            // Check if descriptions are similar (if both exist)
+            let descSimilarity = 1;
+            if (offer.description && unique.description) {
+              descSimilarity = calculateSimilarity(
+                offer.description.toLowerCase(), 
+                unique.description.toLowerCase()
+              );
+            }
+            
+            // Consider duplicate if title is very similar (>80%) or exact discount match with similar title (>60%)
+            return titleSimilarity > 0.8 || (sameDiscount && titleSimilarity > 0.6 && descSimilarity > 0.7);
+          });
+          
+          if (isDuplicate) {
+            duplicates.push(offer);
+          } else {
+            uniqueOffers.push(offer);
+          }
+        }
+        
+        toDelete.push(...duplicates);
+        duplicatesRemoved += duplicates.length;
+      }
+    }
+    
+    if (args.dryRun) {
+      return {
+        totalOffers: allOffers.length,
+        wouldDelete: toDelete.length,
+        wouldKeep: allOffers.length - toDelete.length,
+        duplicatesRemoved,
+        oldBatchesRemoved,
+        breakdown: Object.entries(groupedOffers).map(([key, offers]) => ({
+          placeAndPlatform: key,
+          totalOffers: offers.length,
+          uniqueFetchTimes: [...new Set(offers.map(o => o.fetchedAt))].length
+        })).slice(0, 10) // Show first 10 for preview
+      };
+    }
+    
+    // Delete identified offers
+    for (const offer of toDelete) {
+      await ctx.db.delete(offer._id);
+    }
+    
+    return {
+      totalOffers: allOffers.length,
+      deleted: toDelete.length,
+      remaining: allOffers.length - toDelete.length,
+      duplicatesRemoved,
+      oldBatchesRemoved
+    };
+  },
+});
+
+// Helper function for string similarity (Levenshtein distance based)
+function calculateSimilarity(str1: string, str2: string): number {
+  const matrix = [];
+  const len1 = str1.length;
+  const len2 = str2.length;
+  
+  if (len1 === 0) return len2 === 0 ? 1 : 0;
+  if (len2 === 0) return 0;
+  
+  // Initialize matrix
+  for (let i = 0; i <= len1; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= len2; j++) {
+    matrix[0][j] = j;
+  }
+  
+  // Fill matrix
+  for (let i = 1; i <= len1; i++) {
+    for (let j = 1; j <= len2; j++) {
+      const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,      // deletion
+        matrix[i][j - 1] + 1,      // insertion
+        matrix[i - 1][j - 1] + cost // substitution
+      );
+    }
+  }
+  
+  const maxLen = Math.max(len1, len2);
+  return 1 - matrix[len1][len2] / maxLen;
+}
