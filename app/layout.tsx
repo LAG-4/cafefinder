@@ -6,6 +6,7 @@ import { ThemeProvider } from "../components/theme-provider";
 import { UiProvider } from "../components/ui-store";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { BGPattern } from "../components/ui/bg-pattern";
+import { ConvexClientProvider } from "../components/ConvexProvider";
 import { Plus } from "lucide-react";
 import StructuredData from "../components/StructuredData";
 
@@ -166,8 +167,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <UiProvider>
-          <div className="min-h-screen flex flex-col">
+          <ConvexClientProvider>
+            <UiProvider>
+              <div className="min-h-screen flex flex-col">
             <header 
               className="sticky top-0 z-40 backdrop-blur border-b" 
               style={{ 
@@ -211,6 +213,7 @@ export default function RootLayout({
             </footer>
           </div>
           </UiProvider>
+          </ConvexClientProvider>
         </ThemeProvider>
       </body>
     </html>

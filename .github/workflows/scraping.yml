@@ -1,0 +1,63 @@
+name: Automated Offer Scraping
+
+on:
+  schedule:
+    # Run every hour at minute 0 (00:00, 01:00, 02:00, etc.)
+    - cron: '0 * * * *'
+  
+  # Allow manual triggering from GitHub Actions tab
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Scraping mode'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - batch
+
+jobs:
+  scrape-offers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Trigger Scraping
+        run: |
+          echo "🚀 Starting automated offer scraping..."
+          echo "Timestamp: $(date)"
+          echo "Mode: ${{ github.event.inputs.mode || 'all' }}"
+          
+          # Call the scraping endpoint on your deployed Vercel app
+          response=$(curl -s -w "%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -d '{"mode": "${{ github.event.inputs.mode || 'all' }}"}' \
+            "${{ secrets.APP_URL }}/api/scraping/cron" \
+            -o response.json)
+          
+          http_code="${response: -3}"
+          
+          echo "HTTP Status: $http_code"
+          
+          if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 201 ]; then
+            echo "✅ Scraping completed successfully!"
+            cat response.json | jq '.' || cat response.json
+          else
+            echo "❌ Scraping failed with status $http_code"
+            cat response.json || echo "No response body"
+            exit 1
+          fi
+
+  # Optional: Send notifications on failure (you can enable this later)
+  notify-on-failure:
+    runs-on: ubuntu-latest
+    needs: scrape-offers
+    if: failure()
+    
+    steps:
+      - name: Notify Failure
+        run: |
+          echo "🚨 Scraping failed! Check the logs above."
+          echo "You can set up Slack/Discord/Email notifications here if needed."

@@ -1,10 +1,14 @@
 "use client";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "../../components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
 import { VisuallyHidden } from "../../components/ui/visually-hidden";
 import { useUi } from "../../components/ui-store";
+import { OffersTab } from "../../components/offers/OffersTab";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { CafeGridSkeleton } from "../../components/CafeCardSkeleton";
 
 type Item = {
   id: string;
@@ -13,13 +17,60 @@ type Item = {
   type: string;
   image: string;
   scores: { overall: number; cost: number; wifi: number; liked: number; safety: number };
-  raw: Record<string, string>;
+  rawScores: {
+    aestheticScore: number;
+    socialMediaFriendliness: string;
+    funFactor?: string;
+    crowdVibe: string;
+    ambianceAndInteriorComfort: string;
+    communityVibe: string;
+    safety: string;
+    inclusionForeigners: string;
+    racismFreeEnvironment: string;
+    lighting: string;
+    musicQualityAndVolume: string;
+    wifiSpeedAndReliability: string;
+    laptopWorkFriendliness: string;
+    valueForMoney: string;
+    foodQualityAndTaste: string;
+    drinkQualityAndSelection: string;
+    cleanlinessAndHygiene: string;
+    serviceSpeed: string;
+    staffFriendliness: string;
+    seatingComfort: string;
+    noiseLevel: string;
+    temperatureComfort: string;
+    availabilityOfPowerOutlets: string;
+    menuClarityAndUsability: string;
+    waitTimes: string;
+    easeOfReservations: string;
+    crowdDensity: string;
+    lineOfSight: string;
+    foodSafety: string;
+    proactiveService: string;
+    airQuality: string;
+    restroomCleanliness: string;
+    paymentConvenience: string;
+    walkabilityAccessibility: string;
+  };
+  rank: number;
+  slug: string;
 };
 
 interface ClientGridProps {
   activeFilters: Record<string, boolean>;
   searchQuery?: string;
   sortOption?: string;
+}
+
+// Generate slug from restaurant name
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single
+    .trim();
 }
 
 function searchItems(items: Item[], query: string): Item[] {
@@ -29,8 +80,7 @@ function searchItems(items: Item[], query: string): Item[] {
   return items.filter(item => 
     item.name.toLowerCase().includes(lowercaseQuery) ||
     item.area.toLowerCase().includes(lowercaseQuery) ||
-    item.type.toLowerCase().includes(lowercaseQuery) ||
-    (item.raw.Location && item.raw.Location.toLowerCase().includes(lowercaseQuery))
+    item.type.toLowerCase().includes(lowercaseQuery)
   );
 }
 
@@ -39,18 +89,14 @@ function sortItems(items: Item[], sortOption: string): Item[] {
   
   switch (sortOption) {
     case "top":
-      return sorted.sort((a, b) => b.scores.overall - a.scores.overall);
+      return sorted.sort((a, b) => a.rank - b.rank); // Lower rank number = better ranking
     case "cost":
       return sorted.sort((a, b) => b.scores.cost - a.scores.cost); // Higher cost score = better value
     case "wifi":
       return sorted.sort((a, b) => b.scores.wifi - a.scores.wifi);
     case "reviews":
       // Sort by aesthetic score as a proxy for reviews
-      return sorted.sort((a, b) => {
-        const aAesthetic = parseFloat(a.raw.Aesthetic_Score || "0");
-        const bAesthetic = parseFloat(b.raw.Aesthetic_Score || "0");
-        return bAesthetic - aAesthetic;
-      });
+      return sorted.sort((a, b) => b.rawScores.aestheticScore - a.rawScores.aestheticScore);
     default:
       return sorted;
   }
@@ -67,26 +113,26 @@ function filterItems(items: Item[], filters: Record<string, boolean>): Item[] {
     
     // Fast Wi-Fi filter - check Wi-Fi field for "good" or "very good"
     if (filters['fast-wifi']) {
-      const wifi = item.raw["Wi-Fi Speed and Reliability"]?.toLowerCase() || "";
+      const wifi = item.rawScores.wifiSpeedAndReliability?.toLowerCase() || "";
       if (!wifi.includes("good") && !wifi.includes("very good")) return false;
     }
     
     // Quiet filter - check noise level for "okay" or better
     if (filters.quiet) {
-      const noise = item.raw["Noise Level"]?.toLowerCase() || "";
+      const noise = item.rawScores.noiseLevel?.toLowerCase() || "";
       if (noise.includes("bad") || noise.includes("rowdy")) return false;
     }
     
     // Outdoor filter - check if has outdoor seating mentioned
     if (filters.outdoor) {
-      const ambiance = item.raw["Ambiance and Interior Comfort"]?.toLowerCase() || "";
-      const images = item.raw["Images"]?.toLowerCase() || "";
+      const ambiance = item.rawScores.ambianceAndInteriorComfort?.toLowerCase() || "";
+      const images = item.image?.toLowerCase() || "";
       if (!ambiance.includes("outdoor") && !images.includes("outdoor")) return false;
     }
     
     // Pet friendly filter - check safety and inclusion fields
     if (filters.pet) {
-      const safety = item.raw["Safety (General Safety and Safe for Women/LGBTQ+)"]?.toLowerCase() || "";
+      const safety = item.rawScores.safety?.toLowerCase() || "";
       if (!safety.includes("good") && !safety.includes("very good")) return false;
     }
     
@@ -97,19 +143,19 @@ function filterItems(items: Item[], filters: Record<string, boolean>): Item[] {
     
     // Parking filter - check walkability/accessibility
     if (filters.parking) {
-      const walkability = item.raw["Walkability/Accessibility"]?.toLowerCase() || "";
+      const walkability = item.rawScores.walkabilityAccessibility?.toLowerCase() || "";
       if (!walkability.includes("good") && !walkability.includes("very good")) return false;
     }
     
     // Good veg filter - check food quality
     if (filters.veg) {
-      const food = item.raw["Food Quality and Taste"]?.toLowerCase() || "";
+      const food = item.rawScores.foodQualityAndTaste?.toLowerCase() || "";
       if (!food.includes("good") && !food.includes("very good")) return false;
     }
     
     // Great coffee filter - check drink quality and type
     if (filters.coffee) {
-      const drinks = item.raw["Drink Quality and Selection"]?.toLowerCase() || "";
+      const drinks = item.rawScores.drinkQualityAndSelection?.toLowerCase() || "";
       const type = item.type.toLowerCase();
       if (!type.includes("cafe") && (!drinks.includes("good") && !drinks.includes("very good"))) return false;
     }
@@ -119,23 +165,39 @@ function filterItems(items: Item[], filters: Record<string, boolean>): Item[] {
 }
 
 export default function ClientGrid({ activeFilters, searchQuery = "", sortOption = "top" }: ClientGridProps) {
-  const [allItems, setAllItems] = useState<Item[]>([]);
   const [filteredItems, setFilteredItems] = useState<Item[]>([]);
   const { view } = useUi();
   
-  useEffect(() => {
-    fetch("/api/places").then((r) => r.json()).then((d) => {
-      setAllItems(d.items);
-      setFilteredItems(d.items);
-    });
-  }, []);
+  // Fetch all places from Convex
+  const allPlaces = useQuery(api.places.getAllPlaces, {});
+  
+  // Transform Convex data to match the expected Item type
+  const allItems: Item[] = useMemo(() => 
+    allPlaces ? allPlaces.map((place) => ({
+      id: place._id,
+      name: place.name,
+      area: place.area,
+      type: place.type,
+      image: place.image || "https://picsum.photos/800/600",
+      scores: place.scores,
+      rawScores: place.rawScores,
+      rank: place.rank,
+      slug: place.slug
+    })) : [], [allPlaces]
+  );
 
   useEffect(() => {
-    let items = filterItems(allItems, activeFilters);
-    items = searchItems(items, searchQuery);
-    items = sortItems(items, sortOption);
-    setFilteredItems(items);
+    if (allItems.length > 0) {
+      let items = filterItems(allItems, activeFilters);
+      items = searchItems(items, searchQuery);
+      items = sortItems(items, sortOption);
+      setFilteredItems(items);
+    }
   }, [allItems, activeFilters, searchQuery, sortOption]);
+
+  if (!allPlaces) {
+    return <CafeGridSkeleton view={view} count={9} />;
+  }
 
   return (
     <div className={view === "grid" ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5" : "space-y-3 sm:space-y-4"}>
@@ -186,7 +248,7 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
                     className="text-white text-xs font-bold px-2 py-1 rounded-full"
                     style={{ backgroundColor: 'var(--primary)' }}
                   >
-                    #{c.raw.Rank || "?"}
+                    #{c.rank || "?"}
                   </div>
                 </div>
                 {/* Hover stats pill like screenshot */}
@@ -248,134 +310,209 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
               </div>
             </a>
           </DialogTrigger>
-          <DialogContent className="max-h-[95vh] overflow-y-auto p-0 mx-2 my-2 sm:mx-6 sm:my-6 max-w-4xl w-[calc(100vw-16px)] sm:w-full">
+          <DialogContent className="max-h-[85vh] overflow-y-auto p-0 m-4 mb-8 sm:m-6 sm:mb-12 !max-w-[calc(100vw-32px)] sm:!max-w-4xl lg:!max-w-6xl w-full">
             <VisuallyHidden>
               <DialogTitle>{c.name} - Cafe Details</DialogTitle>
             </VisuallyHidden>
-            <div className="flex flex-col lg:grid lg:grid-cols-2 gap-0 min-h-[500px] sm:min-h-[600px]">
-              <div className="relative h-48 sm:h-64 lg:h-full min-h-[200px] sm:min-h-[300px]">
-                <Image 
-                  src={isValidHttpUrl(c.image) ? c.image : "https://picsum.photos/800/600"} 
-                  alt={c.name} 
-                  fill 
-                  className="object-cover lg:rounded-l-xl"
-                  onError={(e) => {
-                    // Fallback to placeholder if image fails to load
-                    const img = e.target as HTMLImageElement;
-                    if (img.src !== "https://picsum.photos/800/600") {
-                      img.src = "https://picsum.photos/800/600";
-                    }
-                  }}
-                />
+            
+            {/* New optimized layout */}
+            <div style={{ backgroundColor: 'var(--background)' }} className="rounded-lg overflow-hidden">
+              {/* Header Section with Image and Key Info */}
+              <div className="relative">
+                {/* Hero Image */}
+                <div className="relative h-48 sm:h-56 lg:h-64">
+                  <Image 
+                    src={isValidHttpUrl(c.image) ? c.image : "https://picsum.photos/800/600"} 
+                    alt={c.name} 
+                    fill 
+                    className="object-cover"
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      if (img.src !== "https://picsum.photos/800/600") {
+                        img.src = "https://picsum.photos/800/600";
+                      }
+                    }}
+                  />
+                  {/* Gradient overlay for text readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                  
+                  {/* Key stats overlay on image */}
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <h3 className="text-white text-2xl sm:text-3xl font-bold mb-1 drop-shadow-lg">{c.name}</h3>
+                        <p className="text-white/95 text-sm sm:text-base drop-shadow-md">{c.type} • {c.area}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="bg-white/25 dark:bg-black/30 backdrop-blur-sm rounded-lg px-3 py-2 mb-2 border border-white/20">
+                          <div className="text-white text-lg font-bold drop-shadow-md">{c.scores.overall.toFixed(0)}/100</div>
+                          <div className="text-white/90 text-xs drop-shadow-sm">Overall</div>
+                        </div>
+                        <div className="bg-emerald-500/90 backdrop-blur-sm rounded-full px-2 py-1 border border-emerald-400/50">
+                          <span className="text-white text-xs font-medium drop-shadow-sm">🏆 Rank #{c.rank || "?"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="p-4 sm:p-6 flex flex-col min-h-[400px]">
-                <div className="mb-4 sm:mb-6">
-                  <h3 className="text-xl sm:text-2xl lg:text-3xl font-semibold mb-2">{c.name}</h3>
-                  <p className="mb-3 text-sm sm:text-base" style={{ color: 'var(--muted-foreground)' }}>{c.type} · {c.area}</p>
+
+              {/* Content Grid - Better space utilization */}
+              <div className="p-4 sm:p-6">
+                {/* Quick Stats Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                   <div 
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium"
+                    className="text-center p-3 rounded-lg border"
                     style={{ 
-                      backgroundColor: 'var(--accent)', 
-                      color: 'var(--primary)' 
+                      backgroundColor: 'var(--muted)', 
+                      borderColor: 'var(--border)' 
                     }}
                   >
-                    🏆 Rank #{c.raw.Rank || "?"}
+                    <div className="text-lg font-bold" style={{ color: 'var(--primary)' }}>{c.rawScores.aestheticScore.toFixed(0)}</div>
+                    <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Aesthetic</div>
+                  </div>
+                  <div 
+                    className="text-center p-3 rounded-lg border"
+                    style={{ 
+                      backgroundColor: 'var(--muted)', 
+                      borderColor: 'var(--border)' 
+                    }}
+                  >
+                    <div className="text-lg font-bold" style={{ color: 'var(--primary)' }}>{c.scores.wifi.toFixed(1)}/5</div>
+                    <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>WiFi</div>
+                  </div>
+                  <div 
+                    className="text-center p-3 rounded-lg border"
+                    style={{ 
+                      backgroundColor: 'var(--muted)', 
+                      borderColor: 'var(--border)' 
+                    }}
+                  >
+                    <div className="text-lg font-bold" style={{ color: 'var(--primary)' }}>{c.scores.safety.toFixed(1)}/5</div>
+                    <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Safety</div>
+                  </div>
+                  <div 
+                    className="text-center p-3 rounded-lg border"
+                    style={{ 
+                      backgroundColor: 'var(--muted)', 
+                      borderColor: 'var(--border)' 
+                    }}
+                  >
+                    <div className="text-lg font-bold" style={{ color: 'var(--primary)' }}>{c.scores.cost.toFixed(1)}/5</div>
+                    <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Value</div>
                   </div>
                 </div>
 
-                <Tabs defaultValue="overview" className="flex-1">
+                {/* Tabbed Content - More Compact */}
+                <Tabs defaultValue="overview" className="w-full">
                   <div className="w-full overflow-x-auto mb-4">
-                    <TabsList className="flex w-max min-w-full lg:w-full lg:grid lg:grid-cols-5 h-auto p-1 gap-1 bg-zinc-100 dark:bg-zinc-800">
-                      <TabsTrigger value="overview" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-zinc-900 dark:data-[state=active]:bg-zinc-900 dark:data-[state=active]:text-zinc-100">Overview</TabsTrigger>
-                      <TabsTrigger value="scores" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-zinc-900 dark:data-[state=active]:bg-zinc-900 dark:data-[state=active]:text-zinc-100">Scores</TabsTrigger>
-                      <TabsTrigger value="vibe" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-zinc-900 dark:data-[state=active]:bg-zinc-900 dark:data-[state=active]:text-zinc-100">Vibe</TabsTrigger>
-                      <TabsTrigger value="practical" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-zinc-900 dark:data-[state=active]:bg-zinc-900 dark:data-[state=active]:text-zinc-100">Practical</TabsTrigger>
-                      <TabsTrigger value="inclusion" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-zinc-900 dark:data-[state=active]:bg-zinc-900 dark:data-[state=active]:text-zinc-100">Inclusion</TabsTrigger>
+                    <TabsList className="flex w-max min-w-full lg:w-full lg:grid lg:grid-cols-6 h-auto p-1 gap-1">
+                      <TabsTrigger value="overview" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm">Overview</TabsTrigger>
+                      <TabsTrigger value="offers" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm">🎁 Offers</TabsTrigger>
+                      <TabsTrigger value="scores" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm">Scores</TabsTrigger>
+                      <TabsTrigger value="vibe" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm">Vibe</TabsTrigger>
+                      <TabsTrigger value="practical" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm">Practical</TabsTrigger>
+                      <TabsTrigger value="inclusion" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm">Inclusion</TabsTrigger>
                     </TabsList>
                   </div>
 
-                  <TabsContent value="overview" className="space-y-3 sm:space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
-                      <div 
-                        className="p-4 sm:p-4 rounded-lg"
-                        style={{ backgroundColor: 'var(--muted)' }}
-                      >
-                        <div 
-                          className="text-2xl sm:text-2xl font-bold"
-                          style={{ color: 'var(--primary)' }}
-                        >
-                          {c.scores.overall.toFixed(2)}/100
-                        </div>
-                        <div className="text-sm sm:text-sm" style={{ color: 'var(--muted-foreground)' }}>Overall Score</div>
+                  <TabsContent value="overview" className="space-y-4">
+                    {/* Key Details in 2 columns */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <h4 className="font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--foreground)' }}>
+                          <span style={{ color: 'var(--primary)' }}>🏢</span>
+                          Location & Type
+                        </h4>
+                        <KeyVal label="Location" value={c.area} />
+                        <KeyVal label="Type" value={c.type} />
+                        <KeyVal label="Crowd Vibe" value={c.rawScores.crowdVibe} />
+                        <KeyVal label="Community Vibe" value={c.rawScores.communityVibe} />
                       </div>
-                      <div 
-                        className="p-4 sm:p-4 rounded-lg"
-                        style={{ backgroundColor: 'var(--muted)' }}
-                      >
-                        <div className="text-2xl sm:text-2xl font-bold text-emerald-600">{parseFloat(c.raw["Aesthetic_Score"] || "0").toFixed(2)}</div>
-                        <div className="text-sm sm:text-sm" style={{ color: 'var(--muted-foreground)' }}>Aesthetic Score</div>
+                      <div className="space-y-3">
+                        <h4 className="font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--foreground)' }}>
+                          <span style={{ color: 'var(--primary)' }}>💻</span>
+                          Work Environment
+                        </h4>
+                        <KeyVal label="Wi-Fi" value={c.rawScores.wifiSpeedAndReliability} />
+                        <KeyVal label="Work Friendly" value={c.rawScores.laptopWorkFriendliness} />
+                        <KeyVal label="Power Outlets" value={c.rawScores.availabilityOfPowerOutlets} />
+                        <KeyVal label="Noise Level" value={c.rawScores.noiseLevel} />
                       </div>
                     </div>
                     
-                    <div className="space-y-3 sm:space-y-3">
-                      <KeyVal label="Location" value={c.raw["Location"]} />
-                      <KeyVal label="Type" value={c.raw["Type"]} />
-                      <KeyVal label="Crowd Vibe" value={c.raw["Crowd Vibe (Chill, Lively, Too Rowdy, etc.)"]} />
-                      <KeyVal label="Wi-Fi" value={c.raw["Wi-Fi Speed and Reliability"]} />
-                      <KeyVal label="Work Friendly" value={c.raw["Laptop/Work Friendliness (For Cafes)"]} />
-                      <KeyVal label="Safety" value={c.raw["Safety (General Safety and Safe for Women/LGBTQ+)"]} />
-                    </div>
-                    
-                    <div className="mt-4 sm:mt-6 p-4 sm:p-4 rounded-lg" style={{ backgroundColor: 'var(--muted)' }}>
-                      <div className="text-sm sm:text-sm font-medium mb-3" style={{ color: 'var(--muted-foreground)' }}>📍 Map View</div>
-                      <div 
-                        className="h-32 sm:h-32 rounded flex items-center justify-center text-sm sm:text-sm"
+                    {/* Action Buttons */}
+                    <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+                      <a
+                        href={`https://maps.google.com/maps?q=${encodeURIComponent(c.name + " " + c.area + " Hyderabad")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        📍 View on Maps
+                      </a>
+                      <a
+                        href={`https://www.google.com/search?q=${encodeURIComponent(c.name + " " + c.area + " Hyderabad")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 inline-flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-lg transition-colors"
                         style={{ 
-                          backgroundColor: 'var(--border)', 
-                          color: 'var(--muted-foreground)' 
+                          borderColor: 'var(--border)', 
+                          color: 'var(--foreground)', 
+                          backgroundColor: 'var(--background)' 
                         }}
                       >
-                        Interactive map coming soon
-                      </div>
+                        🔍 Search Online
+                      </a>
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="scores">
-                    <div className="space-y-4">
-                      {["Food Quality and Taste","Drink Quality and Selection","Ambiance and Interior Comfort","Music Quality and Volume","Service Speed","Staff Friendliness and Attentiveness","Cleanliness and Hygiene","Value for Money / Pricing"].map((k) => (
-                        <Bar key={k} label={k} value={c.raw[k]} />
-                      ))}
+                  <TabsContent value="offers">
+                    <OffersTab slug={generateSlug(c.name)} />
+                  </TabsContent>
+
+                  <TabsContent value="scores" className="space-y-3">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-3">
+                      <Bar key="food" label="Food Quality" value={c.rawScores.foodQualityAndTaste} />
+                      <Bar key="drinks" label="Drink Quality" value={c.rawScores.drinkQualityAndSelection} />
+                      <Bar key="ambiance" label="Ambiance" value={c.rawScores.ambianceAndInteriorComfort} />
+                      <Bar key="music" label="Music Quality" value={c.rawScores.musicQualityAndVolume} />
+                      <Bar key="service" label="Service Speed" value={c.rawScores.serviceSpeed} />
+                      <Bar key="staff" label="Staff Friendliness" value={c.rawScores.staffFriendliness} />
+                      <Bar key="cleanliness" label="Cleanliness" value={c.rawScores.cleanlinessAndHygiene} />
+                      <Bar key="value" label="Value for Money" value={c.rawScores.valueForMoney} />
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="vibe">
-                    <div className="space-y-4">
-                      <KeyVal label="Community Vibe" value={c.raw["Community Vibe (Welcoming, Regulars, Neutral Ground Feel)"]} />
-                      <KeyVal label="Lighting" value={c.raw["Lighting (Brightness & Mood Suitability)"]} />
-                      <KeyVal label="Noise Level" value={c.raw["Noise Level"]} />
-                      <KeyVal label="Temperature Comfort" value={c.raw["Temperature Comfort (A/C effectiveness)"]} />
-                      <KeyVal label="Line of Sight/Personal Space" value={c.raw["Line of Sight/Personal Space at Tables"]} />
+                  <TabsContent value="vibe" className="space-y-3">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-3">
+                      <KeyVal label="Community Vibe" value={c.rawScores.communityVibe} />
+                      <KeyVal label="Lighting" value={c.rawScores.lighting} />
+                      <KeyVal label="Noise Level" value={c.rawScores.noiseLevel} />
+                      <KeyVal label="Temperature" value={c.rawScores.temperatureComfort} />
+                      <KeyVal label="Personal Space" value={c.rawScores.lineOfSight} />
+                      <KeyVal label="Crowd Density" value={c.rawScores.crowdDensity} />
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="practical">
-                    <div className="space-y-4">
-                      <KeyVal label="Wi‑Fi" value={c.raw["Wi-Fi Speed and Reliability"]} />
-                      <KeyVal label="Laptop/Work Friendly" value={c.raw["Laptop/Work Friendliness (For Cafes)"]} />
-                      <KeyVal label="Power Outlets" value={c.raw["Availability of Power Outlets"]} />
-                      <KeyVal label="Menu Clarity" value={c.raw["Menu Clarity and Usability"]} />
-                      <KeyVal label="Wait Times" value={c.raw["Wait Times / Queue Management"]} />
-                      <KeyVal label="Reservations" value={c.raw["Ease of Reservations/Bookings"]} />
-                      <KeyVal label="Payment Convenience" value={c.raw["Payment Convenience (Multiple Digital Options/No Cash-Only Hassle)"]} />
-                      <KeyVal label="Walkability/Accessibility" value={c.raw["Walkability/Accessibility"]} />
+                  <TabsContent value="practical" className="space-y-3">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-3">
+                      <KeyVal label="Wi‑Fi Speed" value={c.rawScores.wifiSpeedAndReliability} />
+                      <KeyVal label="Work Friendliness" value={c.rawScores.laptopWorkFriendliness} />
+                      <KeyVal label="Power Outlets" value={c.rawScores.availabilityOfPowerOutlets} />
+                      <KeyVal label="Menu Clarity" value={c.rawScores.menuClarityAndUsability} />
+                      <KeyVal label="Wait Times" value={c.rawScores.waitTimes} />
+                      <KeyVal label="Reservations" value={c.rawScores.easeOfReservations} />
+                      <KeyVal label="Payment Options" value={c.rawScores.paymentConvenience} />
+                      <KeyVal label="Accessibility" value={c.rawScores.walkabilityAccessibility} />
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="inclusion">
-                    <div className="space-y-4">
-                      <KeyVal label="Safety (general + women/LGBTQ+)" value={c.raw["Safety (General Safety and Safe for Women/LGBTQ+)"]} />
-                      <KeyVal label="Inclusion/Friendliness to Foreigners" value={c.raw["Inclusion/Friendliness to Foreigners"]} />
-                      <KeyVal label="Racism-Free Environment" value={c.raw["Racism-Free Environment"]} />
+                  <TabsContent value="inclusion" className="space-y-3">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-3">
+                      <KeyVal label="General Safety" value={c.rawScores.safety} />
+                      <KeyVal label="Foreigner Friendly" value={c.rawScores.inclusionForeigners} />
+                      <KeyVal label="Anti-Racism" value={c.rawScores.racismFreeEnvironment} />
                     </div>
                   </TabsContent>
                 </Tabs>
@@ -402,22 +539,22 @@ function Bar({ label, value }: { label: string; value: string }) {
   };
   
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-      <div className="w-full sm:w-52 text-sm sm:text-xs flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
-        <Emoji label={label} />
-        {label}
-      </div>
-      <div className="flex items-center gap-3 flex-1">
-        <div className="flex-1 min-w-0 h-5 sm:h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
-          <div 
-            className="h-full transition-all duration-300" 
-            style={{ 
-              width: `${v}%`,
-              backgroundColor: getColor(v)
-            }} 
-          />
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <div className="text-sm flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
+          <Emoji label={label} />
+          {label}
         </div>
-        <div className="text-xs font-medium w-16 sm:w-auto flex-shrink-0" style={{ color: 'var(--foreground)' }}>{value}</div>
+        <div className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>{value}</div>
+      </div>
+      <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
+        <div 
+          className="h-full transition-all duration-300" 
+          style={{ 
+            width: `${v}%`,
+            backgroundColor: getColor(v)
+          }} 
+        />
       </div>
     </div>
   );
@@ -441,34 +578,34 @@ function KeyVal({ label, value }: { label: string; value?: string }) {
     };
     
     return (
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-sm">
-        <div className="w-full sm:w-56 flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
-          <Emoji label={label} />
-          {label}
-        </div>
-        <div className="flex items-center gap-3 flex-1">
-          <div className="flex-1 min-w-0 h-5 sm:h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
-            <div 
-              className="h-full transition-all duration-300" 
-              style={{ 
-                width: `${v}%`,
-                backgroundColor: getColor(v)
-              }} 
-            />
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <div className="text-sm flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
+            <Emoji label={label} />
+            {label}
           </div>
-          <div className="w-20 text-xs font-medium flex-shrink-0" style={{ color: 'var(--foreground)' }}>{value}</div>
+          <div className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>{value}</div>
+        </div>
+        <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
+          <div 
+            className="h-full transition-all duration-300" 
+            style={{ 
+              width: `${v}%`,
+              backgroundColor: getColor(v)
+            }} 
+          />
         </div>
       </div>
     );
   }
   
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-sm">
-      <div className="w-full sm:w-56 flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
+    <div className="flex items-center justify-between text-sm">
+      <div className="flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
         <Emoji label={label} />
         {label}
       </div>
-      <div className="flex-1 font-medium" style={{ color: 'var(--foreground)' }}>{value || "—"}</div>
+      <div className="font-medium text-right" style={{ color: 'var(--foreground)' }}>{value || "—"}</div>
     </div>
   );
 }
