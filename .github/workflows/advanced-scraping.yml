@@ -1,0 +1,219 @@
+name: Multi-Strategy Offer Scraping
+
+on:
+  schedule:
+    # Primary schedule: Every hour
+    - cron: '0 * * * *'
+    # Backup schedule: Every 3 hours (in case primary fails)
+    - cron: '0 */3 * * *'
+  
+  workflow_dispatch:
+    inputs:
+      strategy:
+        description: 'Scraping strategy'
+        required: false
+        default: 'smart'
+        type: choice
+        options:
+          - smart
+          - conservative
+          - aggressive
+          - test
+
+env:
+  MAX_RETRIES: 3
+  TIMEOUT_MINUTES: 15
+
+jobs:
+  scrape-strategy-smart:
+    if: github.event.inputs.strategy == 'smart' || github.event.inputs.strategy == '' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        region: [us-east, us-west, eu-central]
+    
+    steps:
+      - name: Set up environment
+        run: |
+          echo "🌍 Running from region: ${{ matrix.region }}"
+          echo "🕐 Timestamp: $(date -u)"
+          echo "🆔 Run ID: ${{ github.run_id }}"
+          
+          # Install necessary tools
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+      
+      - name: Smart Scraping with Retry Logic
+        run: |
+          attempt=1
+          max_attempts=${{ env.MAX_RETRIES }}
+          success=false
+          
+          while [ $attempt -le $max_attempts ] && [ "$success" = false ]; do
+            echo "🚀 Attempt $attempt/$max_attempts: Smart scraping strategy"
+            
+            # Add randomized delay to avoid simultaneous requests from multiple regions
+            if [ "${{ matrix.region }}" = "us-west" ]; then
+              sleep $((RANDOM % 30 + 10))  # 10-40 seconds delay
+            elif [ "${{ matrix.region }}" = "eu-central" ]; then
+              sleep $((RANDOM % 60 + 20))  # 20-80 seconds delay
+            fi
+            
+            response=$(curl -s -w "%{http_code}" -X POST \
+              -H "Content-Type: application/json" \
+              -H "User-Agent: GitHub-Actions-Bot/1.0 (Region: ${{ matrix.region }})" \
+              -H "X-GitHub-Run-ID: ${{ github.run_id }}" \
+              $([ -n "${{ secrets.CRON_SECRET }}" ] && echo "-H \"Authorization: Bearer ${{ secrets.CRON_SECRET }}\"") \
+              -d '{
+                "mode": "all",
+                "strategy": "smart",
+                "source": "github-actions",
+                "region": "${{ matrix.region }}",
+                "attempt": '$attempt'
+              }' \
+              --connect-timeout 30 \
+              --max-time 300 \
+              "${{ secrets.APP_URL }}/api/scraping/cron" \
+              -o response.json 2>/dev/null || echo "000")
+            
+            http_code="${response: -3}"
+            
+            echo "📊 HTTP Status: $http_code"
+            
+            if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 201 ]; then
+              echo "✅ Smart scraping completed successfully!"
+              
+              # Parse and display results
+              if command -v jq &> /dev/null; then
+                success_count=$(cat response.json | jq -r '.result.success // 0' 2>/dev/null || echo "unknown")
+                total_count=$(cat response.json | jq -r '.result.total // 0' 2>/dev/null || echo "unknown")
+                echo "📈 Results: $success_count/$total_count places scraped successfully"
+                cat response.json | jq '.' 2>/dev/null || cat response.json
+              else
+                cat response.json
+              fi
+              
+              success=true
+            else
+              echo "❌ Attempt $attempt failed with status $http_code"
+              
+              if [ -f response.json ]; then
+                echo "Response:"
+                cat response.json
+              fi
+              
+              if [ $attempt -lt $max_attempts ]; then
+                # Exponential backoff with jitter
+                delay=$((attempt * 60 + RANDOM % 60))
+                echo "⏳ Waiting ${delay}s before retry..."
+                sleep $delay
+              fi
+            fi
+            
+            attempt=$((attempt + 1))
+          done
+          
+          if [ "$success" = false ]; then
+            echo "💥 All attempts failed for region ${{ matrix.region }}"
+            exit 1
+          fi
+
+  scrape-strategy-conservative:
+    if: github.event.inputs.strategy == 'conservative'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+      - name: Conservative Scraping (Single Region, Slower)
+        run: |
+          echo "🐌 Conservative scraping strategy - prioritizing success over speed"
+          
+          response=$(curl -s -w "%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: Mozilla/5.0 (compatible; ConservativeBot/1.0)" \
+            $([ -n "${{ secrets.CRON_SECRET }}" ] && echo "-H \"Authorization: Bearer ${{ secrets.CRON_SECRET }}\"") \
+            -d '{
+              "mode": "batch",
+              "strategy": "conservative",
+              "chunkSize": 2,
+              "chunkDelay": 10000
+            }' \
+            --connect-timeout 60 \
+            --max-time 600 \
+            "${{ secrets.APP_URL }}/api/scraping/batch" \
+            -o response.json)
+          
+          http_code="${response: -3}"
+          
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ Conservative scraping completed"
+            cat response.json | jq '.' || cat response.json
+          else
+            echo "❌ Conservative scraping failed: $http_code"
+            cat response.json || echo "No response"
+            exit 1
+          fi
+
+  scrape-strategy-test:
+    if: github.event.inputs.strategy == 'test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Test Scraping (Limited)
+        run: |
+          echo "🧪 Test scraping - just checking if the system is responsive"
+          
+          # Test endpoint availability first
+          health_check=$(curl -s -w "%{http_code}" \
+            "${{ secrets.APP_URL }}/api/scraping/batch" \
+            -o health.json)
+          
+          echo "Health check status: ${health_check: -3}"
+          
+          if [ "${health_check: -3}" = "200" ]; then
+            echo "✅ System is healthy, running limited test scrape"
+            
+            response=$(curl -s -w "%{http_code}" -X POST \
+              -H "Content-Type: application/json" \
+              $([ -n "${{ secrets.CRON_SECRET }}" ] && echo "-H \"Authorization: Bearer ${{ secrets.CRON_SECRET }}\"") \
+              -d '{"mode": "batch", "limit": 3}' \
+              "${{ secrets.APP_URL }}/api/scraping/batch" \
+              -o test_response.json)
+            
+            echo "Test scrape status: ${response: -3}"
+            cat test_response.json | jq '.' || cat test_response.json
+          else
+            echo "❌ System health check failed"
+            cat health.json || echo "No health response"
+            exit 1
+          fi
+
+  monitor-and-report:
+    needs: [scrape-strategy-smart]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Generate Report
+        run: |
+          echo "📊 Scraping Job Report"
+          echo "====================="
+          echo "🕐 Completed at: $(date -u)"
+          echo "🆔 Run ID: ${{ github.run_id }}"
+          echo "🔗 Run URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          
+          # Check job status
+          if [ "${{ needs.scrape-strategy-smart.result }}" = "success" ]; then
+            echo "✅ Smart scraping strategy: SUCCESS"
+          else
+            echo "❌ Smart scraping strategy: FAILED"
+            echo "🔍 Check the logs above for details"
+          fi
+          
+          echo ""
+          echo "📱 You can view detailed results in your app's admin dashboard:"
+          echo "🌐 ${{ secrets.APP_URL }}/admin/offers"
