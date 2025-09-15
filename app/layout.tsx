@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "../components/theme-provider";
 import { UiProvider } from "../components/ui-store";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { BGPattern } from "../components/ui/bg-pattern";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,6 +30,13 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100`}
       >
+        <BGPattern 
+          variant="dots" 
+          mask="fade-center" 
+          size={20} 
+          fill="var(--muted-foreground)" 
+          className="opacity-30"
+        />
         <ThemeProvider>
           <UiProvider>
           <div className="min-h-screen flex flex-col">
