@@ -50,7 +50,8 @@ jobs:
         run: |
           echo "🏥 Performing health check..."
           
-          response=$(curl -s -w "%{http_code}" \
+          # Follow redirects with -L flag, try both with and without trailing slash
+          response=$(curl -s -w "%{http_code}" -L \
             "${{ secrets.APP_URL }}/api/scraping/batch?detailed=true" \
             -o health.json)
           
@@ -59,15 +60,34 @@ jobs:
           
           if [ "$http_code" = "200" ]; then
             echo "✅ Server is healthy"
-            if command -v jq &> /dev/null; then
+            if command -v jq &> /dev/null && [ -f health.json ]; then
               cat health.json | jq '.service, .status' || cat health.json
             else
-              cat health.json
+              cat health.json 2>/dev/null || echo "No JSON response"
             fi
           else
-            echo "❌ Server health check failed"
-            cat health.json || echo "No response"
-            exit 1
+            echo "❌ Server health check failed with status $http_code"
+            echo "🔍 Response content:"
+            cat health.json 2>/dev/null || echo "No response file"
+            
+            # Try alternative URL format (with trailing slash)
+            echo "🔄 Trying alternative URL format..."
+            response2=$(curl -s -w "%{http_code}" -L \
+              "${{ secrets.APP_URL }}/api/scraping/batch/" \
+              -o health2.json)
+            
+            http_code2="${response2: -3}"
+            echo "Alternative URL status: $http_code2"
+            
+            if [ "$http_code2" = "200" ]; then
+              echo "✅ Alternative URL works!"
+              cat health2.json 2>/dev/null || echo "No response"
+            else
+              echo "❌ Both URL formats failed"
+              echo "💡 Please check your APP_URL secret format"
+              echo "📝 Current URL: ${{ secrets.APP_URL }}"
+              exit 1
+            fi
           fi
       
       - name: Smart Scraping with Retry Logic
@@ -97,7 +117,7 @@ jobs:
             
             echo "📤 Request: $request_body"
             
-            response=$(curl -s -w "%{http_code}" -X POST \
+            response=$(curl -s -w "%{http_code}" -X POST -L \
               -H "Content-Type: application/json" \
               -H "User-Agent: GitHub-Actions-CafeFinderBot/1.0" \
               -H "X-GitHub-Run-ID: ${{ github.run_id }}" \
