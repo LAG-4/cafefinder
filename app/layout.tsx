@@ -7,6 +7,7 @@ import { UiProvider } from "../components/ui-store";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { BGPattern } from "../components/ui/bg-pattern";
 import { Plus } from "lucide-react";
+import StructuredData from "../components/StructuredData";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,8 +20,75 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CafeHopper - Discover Hyderabad's Best Cafes",
-  description: "Discover the best cafes, restaurants, and pubs in Hyderabad with CafeHopper",
+  title: {
+    default: "CafeHopper - Discover Hyderabad's Best Cafes, Restaurants & Bars",
+    template: "%s | CafeHopper - Hyderabad's Best Food & Drink Guide"
+  },
+  description: "Discover and explore the top 100 cafes, restaurants, bars, and pubs in Hyderabad. Find perfect spots for work, dining, hanging out with friends, or enjoying great coffee and food in the city.",
+  keywords: [
+    "Hyderabad cafes",
+    "best restaurants Hyderabad",
+    "coffee shops Hyderabad",
+    "bars pubs Hyderabad",
+    "food places Hyderabad",
+    "co-working cafes",
+    "hangout spots Hyderabad",
+    "dining Hyderabad",
+    "cafe hopping",
+    "Telangana restaurants"
+  ],
+  authors: [{ name: "CafeHopper Team" }],
+  creator: "CafeHopper",
+  publisher: "CafeHopper",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  metadataBase: new URL("https://cafefinder-hyd.vercel.app"),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "CafeHopper - Discover Hyderabad's Best Cafes, Restaurants & Bars",
+    description: "Discover and explore the top 100 cafes, restaurants, bars, and pubs in Hyderabad. Find perfect spots for work, dining, hanging out with friends, or enjoying great coffee and food in the city.",
+    url: "https://cafefinder-hyd.vercel.app",
+    siteName: "CafeHopper",
+    locale: "en_US",
+    type: "website",
+    images: [
+      {
+        url: "/og-image.svg",
+        width: 1200,
+        height: 630,
+        alt: "CafeHopper - Discover Hyderabad's Best Cafes and Restaurants",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CafeHopper - Discover Hyderabad's Best Cafes & Restaurants",
+    description: "Find the perfect cafe, restaurant, or bar in Hyderabad. Top 100 curated spots for food, work, and hangouts.",
+    images: ["/twitter-image.svg"],
+    creator: "@cafehopper_hyd",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  verification: {
+    google: "your-google-verification-code-here",
+    yandex: "your-yandex-verification-code-here",
+    yahoo: "your-yahoo-verification-code-here",
+  },
+  category: "food and drink",
 };
 
 export default function RootLayout({
@@ -28,8 +96,57 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "CafeHopper",
+    "url": "https://cafefinder-hyd.vercel.app",
+    "description": "Discover and explore the top 100 cafes, restaurants, bars, and pubs in Hyderabad. Find perfect spots for work, dining, hanging out with friends, or enjoying great coffee and food in the city.",
+    "inLanguage": "en-US",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://cafefinder-hyd.vercel.app/?search={search_term_string}",
+      "query-input": "required name=search_term_string"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "CafeHopper",
+      "url": "https://cafefinder-hyd.vercel.app"
+    },
+    "about": {
+      "@type": "LocalBusiness",
+      "name": "Hyderabad Food & Beverage Directory",
+      "description": "Complete guide to the best cafes, restaurants, bars and pubs in Hyderabad",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Hyderabad",
+        "addressRegion": "Telangana", 
+        "addressCountry": "IN"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": "17.3850",
+        "longitude": "78.4867"
+      },
+      "servesCuisine": ["Indian", "Continental", "Asian", "Italian", "Mexican", "Chinese"],
+      "priceRange": "₹₹-₹₹₹₹"
+    }
+  };
+
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <StructuredData data={structuredData} />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="CafeHopper" />
+        <meta name="theme-color" content="#ee5a24" />
+        <meta name="msapplication-TileColor" content="#ee5a24" />
+        <meta name="msapplication-navbutton-color" content="#ee5a24" />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100`}
       >
         <BGPattern 

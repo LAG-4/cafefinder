@@ -1,0 +1,23 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="iconGradient512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ee5a24;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#feca57;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background Circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#iconGradient512)"/>
+  
+  <!-- Coffee Cup Icon -->
+  <g transform="translate(172, 172)">
+    <!-- Cup body -->
+    <path d="M20 52 L20 140 Q20 150 30 150 L138 150 Q148 150 148 140 L148 52 Z" fill="white" opacity="0.9"/>
+    <!-- Handle -->
+    <path d="M148 76 Q172 76 172 100 Q172 124 148 124" fill="none" stroke="white" stroke-width="8" opacity="0.9"/>
+    <!-- Steam lines -->
+    <path d="M52 32 L52 52" stroke="white" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+    <path d="M84 20 L84 44" stroke="white" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+    <path d="M116 32 L116 52" stroke="white" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+  </g>
+</svg>

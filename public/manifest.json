@@ -1,0 +1,76 @@
+{
+  "name": "CafeHopper - Hyderabad's Best Cafes & Restaurants",
+  "short_name": "CafeHopper",
+  "description": "Discover and explore the top 100 cafes, restaurants, bars, and pubs in Hyderabad. Find perfect spots for work, dining, hanging out with friends, or enjoying great coffee and food in the city.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ee5a24",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en-US",
+  "categories": ["food", "lifestyle", "travel"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png", 
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "CafeHopper Desktop View"
+    },
+    {
+      "src": "/screenshot-mobile.png", 
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "CafeHopper Mobile View"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Top Cafes",
+      "short_name": "Cafes",
+      "description": "Browse top cafes in Hyderabad",
+      "url": "/?filter=cafe",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Best Restaurants",
+      "short_name": "Restaurants", 
+      "description": "Discover best restaurants in Hyderabad",
+      "url": "/?filter=restaurant",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

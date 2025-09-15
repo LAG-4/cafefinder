@@ -1,0 +1,15 @@
+# Robots.txt for CafeHopper
+# Allow all crawlers to access all content
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://cafefinder-hyd.vercel.app/sitemap.xml
+
+# Crawl-delay for respectful crawling
+Crawl-delay: 1
+
+# Disallow unnecessary paths (if any)
+# Disallow: /api/
+# Disallow: /_next/
