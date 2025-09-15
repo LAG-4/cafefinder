@@ -1,30 +1,29 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-// Query offers for a specific place
+// Query active offers for a specific place
 export const getOffersByPlace = query({
   args: { placeSlug: v.string() },
   handler: async (ctx, args) => {
-    const offers = await ctx.db.query("offers").collect();
-    return offers.filter(offer => 
-      offer.placeSlug === args.placeSlug && offer.isActive
-    );
+    return await ctx.db
+      .query("offers")
+      .withIndex("by_place_active", (q) =>
+        q.eq("placeSlug", args.placeSlug).eq("isActive", true)
+      )
+      .collect();
   },
 });
 
-// Query offers by platform
-export const getOffersByPlatform = query({
-  args: { platform: v.string() },
-  handler: async (ctx, args) => {
-    const offers = await ctx.db.query("offers").collect();
-    return offers.filter(offer => 
-      offer.platform === args.platform && offer.isActive
-    );
+// Get all offers for admin/debugging
+export const getAllOffers = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("offers").collect();
   },
 });
 
-// Add a new offer
-export const addOffer = mutation({
+// Add or update an offer
+export const upsertOffer = mutation({
   args: {
     placeSlug: v.string(),
     platform: v.string(),
@@ -38,49 +37,121 @@ export const addOffer = mutation({
     deepLink: v.string(),
     fetchedAt: v.string(),
     isActive: v.boolean(),
+    expiresAt: v.optional(v.string()),
+    lastCheckedAt: v.optional(v.string()),
+    offerType: v.optional(v.string()),
+    sourceUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("offers", args);
+    // Try to find existing offer with same title and place
+    const existing = await ctx.db
+      .query("offers")
+      .withIndex("by_place", (q) => q.eq("placeSlug", args.placeSlug))
+      .filter((q) => q.eq(q.field("title"), args.title))
+      .first();
+
+    if (existing) {
+      // Update existing offer
+      return await ctx.db.patch(existing._id, {
+        ...args,
+        lastCheckedAt: args.lastCheckedAt || args.fetchedAt,
+      });
+    } else {
+      // Create new offer
+      return await ctx.db.insert("offers", {
+        ...args,
+        lastCheckedAt: args.lastCheckedAt || args.fetchedAt,
+        sourceUrl: args.sourceUrl || args.deepLink,
+      });
+    }
   },
 });
 
-// Update offer active status
-export const updateOfferStatus = mutation({
-  args: {
-    offerId: v.id("offers"),
-    isActive: v.boolean(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db.patch(args.offerId, { isActive: args.isActive });
-  },
-});
-
-// Get all active offers
-export const getAllActiveOffers = query({
-  handler: async (ctx) => {
-    const offers = await ctx.db.query("offers").collect();
-    return offers.filter(offer => offer.isActive);
-  },
-});
-
-// Platform mappings functions
-export const getPlacePlatformMappings = query({
-  args: { placeSlug: v.string() },
-  handler: async (ctx, args) => {
-    const mappings = await ctx.db.query("placePlatformMappings").collect();
-    return mappings.filter(mapping => mapping.placeSlug === args.placeSlug);
-  },
-});
-
-export const addPlacePlatformMapping = mutation({
+// Mark offers as inactive if they weren't found in latest scrape
+export const markOffersInactive = mutation({
   args: {
     placeSlug: v.string(),
-    platform: v.string(),
-    url: v.string(),
-    lastVerifiedAt: v.optional(v.string()),
-    confidence: v.number(),
+    currentOfferTitles: v.array(v.string()),
+    checkedAt: v.string(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("placePlatformMappings", args);
+    const existingOffers = await ctx.db
+      .query("offers")
+      .withIndex("by_place", (q) => q.eq("placeSlug", args.placeSlug))
+      .collect();
+
+    const updates = [];
+    for (const offer of existingOffers) {
+      if (!args.currentOfferTitles.includes(offer.title) && offer.isActive) {
+        updates.push(
+          ctx.db.patch(offer._id, {
+            isActive: false,
+            lastCheckedAt: args.checkedAt,
+          })
+        );
+      }
+    }
+
+    await Promise.all(updates);
+    return updates.length;
+  },
+});
+
+// Get scraping status for a place
+export const getScrapingStatus = query({
+  args: { placeSlug: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("scrapingStatus")
+      .withIndex("by_place", (q) => q.eq("placeSlug", args.placeSlug))
+      .first();
+  },
+});
+
+// Update scraping status
+export const updateScrapingStatus = mutation({
+  args: {
+    placeSlug: v.string(),
+    zomatoUrl: v.string(),
+    lastScrapedAt: v.string(),
+    nextScrapeAt: v.string(),
+    status: v.string(),
+    errorMessage: v.optional(v.string()),
+    offersFound: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("scrapingStatus")
+      .withIndex("by_place", (q) => q.eq("placeSlug", args.placeSlug))
+      .first();
+
+    if (existing) {
+      return await ctx.db.patch(existing._id, args);
+    } else {
+      return await ctx.db.insert("scrapingStatus", args);
+    }
+  },
+});
+
+// Get places that need scraping
+export const getPlacesNeedingScraping = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const now = new Date().toISOString();
+    const limit = args.limit || 10;
+
+    return await ctx.db
+      .query("scrapingStatus")
+      .withIndex("by_next_scrape")
+      .filter((q) => q.lte(q.field("nextScrapeAt"), now))
+      .take(limit);
+  },
+});
+
+// Get all places for scraping (for batch operations)
+export const getAllPlacesForScraping = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("scrapingStatus").collect();
   },
 });

@@ -62,7 +62,7 @@ export default defineSchema({
   // Offers table for discount data
   offers: defineTable({
     placeSlug: v.string(),
-    platform: v.string(), // zomato, swiggy, dineout, etc.
+    platform: v.string(), // Always 'zomato' for now
     title: v.string(),
     description: v.optional(v.string()),
     validityText: v.optional(v.string()),
@@ -70,22 +70,31 @@ export default defineSchema({
     discountPct: v.optional(v.number()),
     minSpend: v.optional(v.number()),
     terms: v.optional(v.array(v.string())),
-    deepLink: v.string(),
+    deepLink: v.string(), // Original Zomato restaurant URL
     fetchedAt: v.string(),
     isActive: v.boolean(),
+    expiresAt: v.optional(v.string()), // When offer expires
+    lastCheckedAt: v.optional(v.string()), // When we last verified this offer exists - made optional for backward compatibility
+    offerType: v.optional(v.string()), // 'bank', 'prebook', 'surprise', 'exclusive', etc.
+    sourceUrl: v.optional(v.string()), // Source Zomato URL where this offer was found - made optional for backward compatibility
   })
     .index("by_place", ["placeSlug"])
     .index("by_platform", ["platform"])
-    .index("by_active", ["isActive"]),
+    .index("by_active", ["isActive"])
+    .index("by_last_checked", ["lastCheckedAt"])
+    .index("by_place_active", ["placeSlug", "isActive"]),
 
-  // Platform mappings for offers aggregation
-  placePlatformMappings: defineTable({
+  // Scraping status to track when we last scraped each restaurant
+  scrapingStatus: defineTable({
     placeSlug: v.string(),
-    platform: v.string(),
-    url: v.string(),
-    lastVerifiedAt: v.optional(v.string()),
-    confidence: v.number(), // 0..1
+    zomatoUrl: v.string(),
+    lastScrapedAt: v.string(),
+    nextScrapeAt: v.string(),
+    status: v.string(), // 'pending', 'success', 'error', 'disabled'
+    errorMessage: v.optional(v.string()),
+    offersFound: v.number(),
   })
-    .index("by_place_platform", ["placeSlug", "platform"])
-    .index("by_place", ["placeSlug"]),
+    .index("by_place", ["placeSlug"])
+    .index("by_next_scrape", ["nextScrapeAt"])
+    .index("by_status", ["status"]),
 });

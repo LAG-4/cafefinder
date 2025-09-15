@@ -11,7 +11,13 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "typecheck": "tsc --noEmit",
-    "validate-mappings": "node scripts/validate-mappings.js"
+    "scraper:init": "tsx scripts/scrape-offers.ts --init",
+    "scraper:batch": "tsx scripts/scrape-offers.ts --batch",
+    "scraper:start": "tsx scripts/scrape-offers.ts",
+    "scraper:fast-init": "tsx scripts/scrape-offers-fast.ts --init",
+    "scraper:fast-all": "tsx scripts/scrape-offers-fast.ts --all",
+    "scraper:fast-batch": "tsx scripts/scrape-offers-fast.ts --batch",
+    "scraper:fast-continuous": "tsx scripts/scrape-offers-fast.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -53,6 +59,7 @@
     "eslint-config-next": "15.5.3",
     "jsdom": "^27.0.0",
     "tailwindcss": "^4",
+    "tsx": "^4.20.5",
     "tw-animate-css": "^1.3.8",
     "typescript": "^5",
     "vitest": "^3.2.4"

@@ -162,12 +162,43 @@ export function OffersTab({ slug, onOfferClick, onOffersLoaded }: OffersTabProps
       {/* Header with refresh info */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">
-            Current Offers ({offers.length})
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Current Offers ({offers.length})
+            </h3>
+            {/* Platform count badge */}
+            {(() => {
+              const platformCount = new Set(offers.map(o => o.platform)).size;
+              return platformCount > 1 ? (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                  {platformCount} platforms
+                </span>
+              ) : null;
+            })()}
+          </div>
           {lastUpdated && (
             <p className="text-sm text-gray-500">{formatLastUpdated(lastUpdated)}</p>
           )}
+          {/* Platform breakdown */}
+          {(() => {
+            const platformCounts = offers.reduce((acc, offer) => {
+              acc[offer.platform] = (acc[offer.platform] || 0) + 1;
+              return acc;
+            }, {} as Record<string, number>);
+            
+            return Object.keys(platformCounts).length > 1 ? (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {Object.entries(platformCounts).map(([platform, count]) => (
+                  <span
+                    key={platform}
+                    className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                  >
+                    {platform.toUpperCase()}: {count}
+                  </span>
+                ))}
+              </div>
+            ) : null;
+          })()}
         </div>
         <Button
           onClick={() => fetchOffers(true)}

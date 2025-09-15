@@ -1,5 +1,17 @@
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../convex/_generated/api";
+import { api } from "../co  for (const offer of sampleOffers) {
+    try {
+      await client.mutation(api.offers.upsertOffer, {
+        ...offer,
+        lastCheckedAt: offer.fetchedAt,
+        sourceUrl: offer.deepLink,
+      });
+      addedCount++;
+      console.log(`Added offer: ${offer.title} for ${offer.placeSlug}`);
+    } catch (error) {
+      console.error(`Error adding offer for ${offer.placeSlug}:`, error);
+    }
+  }erated/api";
 import dotenv from 'dotenv';
 
 // Load environment variables
@@ -78,7 +90,7 @@ async function addSampleOffers() {
 
   for (const offer of sampleOffers) {
     try {
-      await client.mutation(api.offers.addOffer, offer);
+      await client.mutation(api.offers.upsertOffer, offer);
       addedCount++;
       console.log(`Added offer: ${offer.title} for ${offer.placeSlug}`);
     } catch (error) {

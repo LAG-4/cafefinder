@@ -28,12 +28,12 @@ const OffersConfigSchema = z.object({
     redisUrl: z.string().optional(),
   }),
   providers: z.object({
-    enabled: z.array(PlatformSchema).default(['zomato', 'swiggy']),
+    enabled: z.array(PlatformSchema).default(['zomato', 'swiggy', 'dineout', 'eazydiner']),
     configs: z.record(PlatformSchema, ProviderConfigSchema).default({
       zomato: ProviderConfigSchema.parse({}),
       swiggy: ProviderConfigSchema.parse({}),
-      dineout: ProviderConfigSchema.parse({ enabled: false }),
-      eazydiner: ProviderConfigSchema.parse({ enabled: false }),
+      dineout: ProviderConfigSchema.parse({}),
+      eazydiner: ProviderConfigSchema.parse({}),
       magicpin: ProviderConfigSchema.parse({ enabled: false }),
       other: ProviderConfigSchema.parse({ enabled: false }),
     }),

@@ -1,38 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOffersCached, refreshOffersForPlace } from '@/lib/offers/service';
-import { getConfig } from '@/lib/config';
-import Papa from 'papaparse';
-import fs from 'fs/promises';
-import path from 'path';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../../../convex/_generated/api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type Place = Record<string, string> & {
-  Name: string;
-  Location: string;
-  Type: string;
-  Images: string;
-};
+const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONVEX_URL;
 
-// Helper to get place data by slug
-async function getPlaceBySlug(slug: string) {
-  try {
-    const file = path.join(process.cwd(), 'hyderabad_top_100_cafes_restaurants_bars_ranked.csv');
-    const csv = await fs.readFile(file, 'utf8');
-    const parsed = Papa.parse<Place>(csv, { header: true, skipEmptyLines: true });
-    
-    const place = parsed.data.find((row: Place) => {
-      const placeSlug = row.Name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      return placeSlug === slug;
-    });
-    
-    return place;
-  } catch (error) {
-    console.error('Error loading place data:', error);
-    return null;
-  }
+if (!CONVEX_URL) {
+  throw new Error('CONVEX_URL environment variable is required');
 }
+
+const convex = new ConvexHttpClient(CONVEX_URL);
 
 export async function GET(
   req: NextRequest,
@@ -48,104 +27,61 @@ export async function GET(
         { status: 400 }
       );
     }
-    
-    // Get place details for better matching
-    const placeData = await getPlaceBySlug(slug);
-    const placeIdentity = placeData ? {
-      name: placeData.Name,
-      area: placeData.Location,
-      // Could add more fields like address, coordinates if available
-    } : undefined;
-    
-    // Check for force refresh
-    const url = new URL(req.url);
-    const forceRefresh = url.searchParams.get('refresh') === 'true';
-    
-    let result;
-    if (forceRefresh) {
-      // Force refresh (admin-only in production)
-      const config = getConfig();
-      const authHeader = req.headers.get('authorization');
-      const token = authHeader?.replace('Bearer ', '');
-      
-      if (config.adminToken && token !== config.adminToken) {
-        return NextResponse.json(
-          { error: 'Unauthorized. Admin token required for force refresh.' },
-          { status: 401 }
-        );
-      }
-      
-      result = await refreshOffersForPlace(slug, placeIdentity);
-    } else {
-      result = await getOffersCached({ placeSlug: slug, placeIdentity });
+
+    // Get offers for this place from Convex
+    const offers = await convex.query(api.offers.getOffersByPlace, {
+      placeSlug: slug,
+    });
+
+    // Transform offers to match frontend format
+    const transformedOffers = offers.map((offer) => ({
+      id: offer._id,
+      platform: offer.platform,
+      title: offer.title,
+      description: offer.description,
+      validityText: offer.validityText,
+      effectivePriceText: offer.effectivePriceText,
+      discountPct: offer.discountPct,
+      minSpend: offer.minSpend,
+      terms: offer.terms,
+      deepLink: offer.deepLink,
+      fetchedAt: offer.fetchedAt,
+      offerType: offer.offerType,
+      expiresAt: offer.expiresAt,
+      lastCheckedAt: offer.lastCheckedAt,
+    }));
+
+    // Get scraping status to provide last updated info (optional)
+    let scrapingStatus = null;
+    try {
+      scrapingStatus = await convex.query(api.offers.getScrapingStatus, {
+        placeSlug: slug,
+      });
+    } catch (error) {
+      console.log('Scraping status not available:', error);
     }
-    
-    // Add cache headers
-    const cacheMaxAge = forceRefresh ? 0 : 300; // 5 minutes for normal requests
-    const headers = {
-      'Cache-Control': `public, max-age=${cacheMaxAge}, s-maxage=${cacheMaxAge}`,
-      'Content-Type': 'application/json',
-    };
-    
-    return NextResponse.json(result, { headers });
-    
+
+    return NextResponse.json({
+      placeSlug: slug,
+      lastRefreshedAt: scrapingStatus?.lastScrapedAt || (offers.length > 0 ? offers[0].fetchedAt : new Date().toISOString()),
+      offers: transformedOffers,
+      scrapingStatus: scrapingStatus ? {
+        status: scrapingStatus.status || 'unknown',
+        lastScrapedAt: scrapingStatus.lastScrapedAt,
+        nextScrapeAt: scrapingStatus.nextScrapeAt,
+        offersFound: scrapingStatus.offersFound || 0,
+        errorMessage: scrapingStatus.errorMessage,
+      } : null,
+    });
+
   } catch (error) {
-    console.error('Offers API error:', error);
+    console.error('Error fetching offers:', error);
     
     return NextResponse.json(
       { 
-        error: 'Internal server error',
-        placeSlug: slug,
-        lastRefreshedAt: new Date().toISOString(),
-        offers: [],
+        error: 'Failed to fetch offers',
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(
-  req: NextRequest,
-  context: { params: Promise<{ slug: string }> }
-) {
-  const params = await context.params;
-  const slug = params.slug;
-  
-  try {
-    // Admin-only force refresh via POST
-    const config = getConfig();
-    const authHeader = req.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-    
-    if (!config.adminToken || token !== config.adminToken) {
-      return NextResponse.json(
-        { error: 'Unauthorized. Admin token required.' },
-        { status: 401 }
-      );
-    }
-    
-    // Get place details
-    const placeData = await getPlaceBySlug(slug);
-    const placeIdentity = placeData ? {
-      name: placeData.Name,
-      area: placeData.Location,
-    } : undefined;
-    
-    const result = await refreshOffersForPlace(slug, placeIdentity);
-    
-    return NextResponse.json({
-      ...result,
-      _meta: {
-        forcedRefresh: true,
-        timestamp: new Date().toISOString(),
-      },
-    });
-    
-  } catch (error) {
-    console.error('Force refresh error:', error);
-    
-    return NextResponse.json(
-      { error: 'Force refresh failed' },
       { status: 500 }
     );
   }
