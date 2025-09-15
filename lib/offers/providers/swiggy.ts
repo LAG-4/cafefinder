@@ -73,6 +73,7 @@ export class SwiggyProvider extends BaseOfferProvider {
     }
   }
   
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private parseSwiggyOffer($: cheerio.CheerioAPI, element: any, placeSlug: string, sourceUrl: string): Offer | null {
     const $el = $(element);
     

@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "../../components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
 import { VisuallyHidden } from "../../components/ui/visually-hidden";
@@ -8,6 +8,7 @@ import { useUi } from "../../components/ui-store";
 import { OffersTab } from "../../components/offers/OffersTab";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { CafeGridSkeleton } from "../../components/CafeCardSkeleton";
 
 type Item = {
   id: string;
@@ -171,17 +172,19 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
   const allPlaces = useQuery(api.places.getAllPlaces, {});
   
   // Transform Convex data to match the expected Item type
-  const allItems: Item[] = allPlaces ? allPlaces.map((place, idx) => ({
-    id: place._id,
-    name: place.name,
-    area: place.area,
-    type: place.type,
-    image: place.image || "https://picsum.photos/800/600",
-    scores: place.scores,
-    rawScores: place.rawScores,
-    rank: place.rank,
-    slug: place.slug
-  })) : [];
+  const allItems: Item[] = useMemo(() => 
+    allPlaces ? allPlaces.map((place) => ({
+      id: place._id,
+      name: place.name,
+      area: place.area,
+      type: place.type,
+      image: place.image || "https://picsum.photos/800/600",
+      scores: place.scores,
+      rawScores: place.rawScores,
+      rank: place.rank,
+      slug: place.slug
+    })) : [], [allPlaces]
+  );
 
   useEffect(() => {
     if (allItems.length > 0) {
@@ -193,7 +196,7 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
   }, [allItems, activeFilters, searchQuery, sortOption]);
 
   if (!allPlaces) {
-    return <div className="text-center py-8">Loading cafes...</div>;
+    return <CafeGridSkeleton view={view} count={9} />;
   }
 
   return (

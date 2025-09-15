@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
     const successCount = results.filter(r => r.success).length;
     const totalDuration = results
       .filter(r => r.success && 'duration' in r)
-      .reduce((sum, r) => sum + (r as any).duration, 0);
+      .reduce((sum, r) => sum + (r as { success: boolean; duration: number }).duration, 0);
     
     console.log(`Cache warming completed: ${successCount}/${results.length} successful`);
     
@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   // Return runtime stats (no auth required for monitoring)
   try {
     const { getRuntimeStats } = await import('@/lib/offers/runtime');
@@ -168,7 +168,7 @@ export async function GET(req: NextRequest) {
       cache: cacheStats,
     });
     
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to get stats' },
       { status: 500 }

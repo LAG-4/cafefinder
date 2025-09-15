@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { OfferCard } from './OfferCard';
 import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw, AlertCircle, Gift } from 'lucide-react';
@@ -41,7 +41,7 @@ export function OffersTab({ slug, onOfferClick, onOffersLoaded }: OffersTabProps
   const [refreshing, setRefreshing] = useState(false);
   const [providerErrors, setProviderErrors] = useState<{ platform: string; reason: string }[]>([]);
   
-  const fetchOffers = async (forceRefresh = false) => {
+  const fetchOffers = useCallback(async (forceRefresh = false) => {
     try {
       setError(null);
       if (forceRefresh) {
@@ -78,7 +78,7 @@ export function OffersTab({ slug, onOfferClick, onOffersLoaded }: OffersTabProps
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [slug, onOffersLoaded]);
   
   useEffect(() => {
     let mounted = true;
@@ -92,7 +92,7 @@ export function OffersTab({ slug, onOfferClick, onOffersLoaded }: OffersTabProps
     return () => {
       mounted = false;
     };
-  }, [slug]);
+  }, [fetchOffers]);
   
   const formatLastUpdated = (timestamp: string) => {
     try {
@@ -191,7 +191,7 @@ export function OffersTab({ slug, onOfferClick, onOffersLoaded }: OffersTabProps
             <AlertCircle className="w-4 h-4 text-yellow-400 mt-0.5 mr-2 flex-shrink-0" />
             <div>
               <h4 className="text-sm font-medium text-yellow-800">
-                Some platforms couldn't be checked
+                Some platforms couldn&apos;t be checked
               </h4>
               <div className="mt-1 text-xs text-yellow-700">
                 {providerErrors.map((error, index) => (

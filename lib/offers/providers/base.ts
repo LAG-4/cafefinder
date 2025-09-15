@@ -48,8 +48,8 @@ export abstract class BaseOfferProvider implements OfferProvider {
     return userAgents[Math.floor(Math.random() * userAgents.length)];
   }
   
-  protected handleError(error: any, context: string): ProviderResult {
-    const message = error?.message || 'unknown_error';
+  protected handleError(error: Error | unknown, context: string): ProviderResult {
+    const message = error instanceof Error ? error.message : 'unknown_error';
     console.warn(`${this.platform} provider error in ${context}:`, message);
     return {
       offers: [],

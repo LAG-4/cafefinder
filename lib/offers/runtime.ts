@@ -153,13 +153,15 @@ export async function sleep(ms: number): Promise<void> {
 }
 
 // Error classification
-export function classifyError(error: any): {
+export function classifyError(error: Error | unknown): {
   isRetryable: boolean;
   shouldBlock: boolean;
   blockDuration?: number;
 } {
-  const status = error?.response?.status;
-  const code = error?.code;
+  // Type guard for axios-like errors
+  const axiosError = error as { response?: { status?: number }; code?: string };
+  const status = axiosError?.response?.status;
+  const code = axiosError?.code;
   
   if (status === 429 || status === 503) {
     // Rate limited or service unavailable - block for longer
@@ -171,7 +173,7 @@ export function classifyError(error: any): {
     return { isRetryable: false, shouldBlock: true, blockDuration: 60 * 60 * 1000 }; // 1 hour
   }
   
-  if (status >= 500 || code === 'ECONNRESET' || code === 'ETIMEDOUT') {
+  if ((status && status >= 500) || code === 'ECONNRESET' || code === 'ETIMEDOUT') {
     // Server error or connection issues - retryable
     return { isRetryable: true, shouldBlock: false };
   }
@@ -191,7 +193,7 @@ export async function withRetry<T>(
   platform: Platform,
   maxAttempts: number = 3
 ): Promise<T> {
-  let lastError: any;
+  let lastError: Error | unknown;
   
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -206,7 +208,7 @@ export async function withRetry<T>(
         attempt,
         maxAttempts,
         error: error instanceof Error ? error.message : String(error),
-        status: (error as any)?.response?.status,
+        status: (error as { response?: { status?: number } })?.response?.status,
         classification,
       }, 'Request failed');
       

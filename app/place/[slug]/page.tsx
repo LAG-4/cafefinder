@@ -1,5 +1,4 @@
 "use client";
-import { useEffect, useState } from "react";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { useQuery } from "convex/react";

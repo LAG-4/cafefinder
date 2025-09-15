@@ -70,7 +70,7 @@ export default function PlaceDetailTabs({ place }: PlaceDetailTabsProps) {
     setOffersCount(count);
   };
   
-  const handleOfferClick = (offer: any) => {
+  const handleOfferClick = (offer: { platform: string; title: string }) => {
     // Track offer clicks for analytics
     console.log('Offer clicked:', offer.platform, offer.title);
   };
@@ -148,7 +148,7 @@ export default function PlaceDetailTabs({ place }: PlaceDetailTabsProps) {
             <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-2">About</h3>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               {place.name} is a {place.type.toLowerCase()} located in {place.area}, Hyderabad. 
-              With an overall rating of {place.scores.overall}%, it's a great choice for dining, 
+              With an overall rating of {place.scores.overall}%, it&apos;s a great choice for dining, 
               working, or hanging out with friends.
             </p>
           </div>

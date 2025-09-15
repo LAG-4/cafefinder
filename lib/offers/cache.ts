@@ -1,5 +1,5 @@
 import { LRUCache } from 'lru-cache';
-import { CacheEntry } from './types';
+import { CacheEntry, OffersResponse } from './types';
 import { getConfig } from '../config';
 
 // In-memory LRU cache
@@ -67,7 +67,7 @@ export async function getCache(key: string): Promise<CacheEntry | null> {
   return cache.get(key) || null;
 }
 
-export async function setCache(key: string, data: any, ttlMs?: number): Promise<void> {
+export async function setCache(key: string, data: OffersResponse, ttlMs?: number): Promise<void> {
   const config = getConfig();
   const actualTtlMs = ttlMs || (config.cache.ttlMinutes * 60 * 1000);
   

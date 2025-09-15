@@ -37,7 +37,7 @@ export type PlaceIdentity = {
 export type ProviderResult = {
   offers: Offer[];
   errors?: string[];
-  rawMeta?: Record<string, any>;
+  rawMeta?: Record<string, unknown>;
 };
 
 export type OffersResponse = {

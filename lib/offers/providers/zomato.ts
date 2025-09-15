@@ -112,6 +112,7 @@ export class ZomatoProvider extends BaseOfferProvider {
     }
   }
   
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private parseZomatoOffer($: cheerio.CheerioAPI, element: any, placeSlug: string, sourceUrl: string): Offer | null {
     const $el = $(element);
     

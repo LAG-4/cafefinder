@@ -88,7 +88,7 @@ export default function OffersAdminPage() {
             <ol className="list-decimal list-inside space-y-1">
               <li>Go to Zomato.com and search for the restaurant</li>
               <li>Copy the URL from the restaurant page</li>
-              <li>Add "/info" at the end for better offer detection</li>
+              <li>Add &quot;/info&quot; at the end for better offer detection</li>
             </ol>
           </div>
         </div>
