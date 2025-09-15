@@ -6,6 +6,7 @@ import { ThemeProvider } from "../components/theme-provider";
 import { UiProvider } from "../components/ui-store";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { BGPattern } from "../components/ui/bg-pattern";
+import { Plus } from "lucide-react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -64,13 +65,15 @@ export default function RootLayout({
                   <ThemeToggle />
                   <a 
                     href="#" 
-                    className="rounded-md px-3 py-1.5 text-sm transition-colors hover:opacity-80"
+                    className="rounded-md px-3 py-1.5 text-sm transition-colors hover:opacity-80 flex items-center gap-2"
                     style={{ 
                       backgroundColor: 'var(--primary)', 
                       color: 'var(--primary-foreground)' 
                     }}
                   >
-                    Join
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden sm:inline">Add place</span>
+                    <span className="sm:hidden">Add</span>
                   </a>
                 </div>
               </div>

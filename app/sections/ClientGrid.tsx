@@ -143,7 +143,7 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
         <Dialog key={c.id}>
           <DialogTrigger asChild>
             <a 
-              className={`group block rounded-xl overflow-hidden border transition relative ${view === "list" ? "flex flex-col sm:flex-row" : ""}`}
+              className={`group block rounded-xl overflow-hidden border transition relative ${view === "list" ? "flex flex-row items-stretch" : ""}`}
               style={{ 
                 borderColor: 'var(--border)', 
                 backgroundColor: 'var(--card)',
@@ -156,7 +156,7 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
                 e.currentTarget.style.boxShadow = 'none';
               }}
             >
-              <div className={`relative ${view === "list" ? "aspect-[4/3] sm:aspect-[3/2] sm:w-48 sm:flex-shrink-0" : "aspect-[4/3]"}`}>
+              <div className={`relative ${view === "list" ? "w-24 sm:w-48 aspect-square sm:aspect-[3/2] flex-shrink-0" : "aspect-[4/3]"}`}>
                 <Image
                   src={isValidHttpUrl(c.image) ? c.image : "https://picsum.photos/800/600"}
                   alt={c.name}
@@ -172,10 +172,14 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
                   }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-                <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 right-2 sm:right-3 text-white">
-                  <div className="text-lg sm:text-xl font-semibold">{c.name}</div>
-                  <div className="text-xs sm:text-sm opacity-90">{c.area}</div>
-                </div>
+                {view !== "list" && (
+                  <>
+                    <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 right-2 sm:right-3 text-white">
+                      <div className="text-lg sm:text-xl font-semibold">{c.name}</div>
+                      <div className="text-xs sm:text-sm opacity-90">{c.area}</div>
+                    </div>
+                  </>
+                )}
                 {/* Rank badge */}
                 <div className="absolute top-2 sm:top-3 right-2 sm:right-3">
                   <div 
@@ -221,18 +225,26 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
                   </div>
                 </div>
               </div>
-              <div className={`p-3 sm:p-4 flex items-center justify-between flex-1 ${view === "list" ? "min-h-[100px] sm:min-h-[120px]" : ""}`}>
-                <div className="space-y-1 flex-1">
+              <div className={`p-3 sm:p-4 flex ${view === "list" ? "flex-col justify-center" : "items-center justify-between"} flex-1 ${view === "list" ? "min-h-[80px] space-y-1" : ""}`}>
+                <div className={`${view === "list" ? "space-y-1" : "space-y-1 flex-1"}`}>
                   {view === "list" && (
-                    <div className="font-semibold text-base" style={{ color: 'var(--foreground)' }}>{c.name}</div>
+                    <div className="font-semibold text-base leading-tight" style={{ color: 'var(--foreground)' }}>{c.name}</div>
                   )}
                   <div className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{c.type}</div>
                   <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Hyderabad · {c.area}</div>
+                  {view === "list" && (
+                    <div className="flex items-center gap-4 mt-2">
+                      <div className="text-sm font-medium">Overall: {c.scores.overall.toFixed(2)}/100</div>
+                      <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Cost: {c.scores.cost.toFixed(2)}/5</div>
+                    </div>
+                  )}
                 </div>
-                <div className="text-right flex-shrink-0 ml-3">
-                  <div className="text-sm font-medium">Overall: {c.scores.overall.toFixed(2)}/100</div>
-                  <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Cost: {c.scores.cost.toFixed(2)}/5</div>
-                </div>
+                {view !== "list" && (
+                  <div className="text-right flex-shrink-0 ml-3">
+                    <div className="text-sm font-medium">Overall: {c.scores.overall.toFixed(2)}/100</div>
+                    <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Cost: {c.scores.cost.toFixed(2)}/5</div>
+                  </div>
+                )}
               </div>
             </a>
           </DialogTrigger>
