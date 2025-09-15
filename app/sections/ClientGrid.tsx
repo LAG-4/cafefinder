@@ -5,6 +5,9 @@ import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "../../compone
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
 import { VisuallyHidden } from "../../components/ui/visually-hidden";
 import { useUi } from "../../components/ui-store";
+import { BestDiscountBadge, DiscountList } from "../../components/DiscountComponents";
+import { RestaurantDiscounts, Discount } from "../../lib/types";
+import { getBestDiscount } from "../../lib/discountService";
 
 type Item = {
   id: string;
@@ -121,14 +124,25 @@ function filterItems(items: Item[], filters: Record<string, boolean>): Item[] {
 export default function ClientGrid({ activeFilters, searchQuery = "", sortOption = "top" }: ClientGridProps) {
   const [allItems, setAllItems] = useState<Item[]>([]);
   const [filteredItems, setFilteredItems] = useState<Item[]>([]);
+  const [discountData, setDiscountData] = useState<RestaurantDiscounts[]>([]);
   const { view } = useUi();
   
   useEffect(() => {
-    fetch("/api/places").then((r) => r.json()).then((d) => {
-      setAllItems(d.items);
-      setFilteredItems(d.items);
+    // Fetch places and discounts data
+    Promise.all([
+      fetch("/api/places").then((r) => r.json()),
+      fetch("/api/discounts").then((r) => r.json())
+    ]).then(([placesData, discountsData]) => {
+      setAllItems(placesData.items);
+      setFilteredItems(placesData.items);
+      setDiscountData(discountsData.discounts);
     });
   }, []);
+
+  const getRestaurantDiscounts = (restaurantId: string): Discount[] => {
+    const restaurant = discountData.find(d => d.restaurantId === restaurantId);
+    return restaurant?.discounts || [];
+  };
 
   useEffect(() => {
     let items = filterItems(allItems, activeFilters);
@@ -139,7 +153,11 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
 
   return (
     <div className={view === "grid" ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5" : "space-y-3 sm:space-y-4"}>
-      {filteredItems.map((c) => (
+      {filteredItems.map((c) => {
+        const restaurantDiscounts = getRestaurantDiscounts(c.id);
+        const bestDiscount = getBestDiscount(restaurantDiscounts);
+        
+        return (
         <Dialog key={c.id}>
           <DialogTrigger asChild>
             <a 
@@ -172,6 +190,10 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
                   }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                
+                {/* Best discount badge */}
+                <BestDiscountBadge discount={bestDiscount} />
+                
                 {view !== "list" && (
                   <>
                     <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 right-2 sm:right-3 text-white">
@@ -236,6 +258,11 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
                     <div className="flex items-center gap-4 mt-2">
                       <div className="text-sm font-medium">Overall: {c.scores.overall.toFixed(2)}/100</div>
                       <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Cost: {c.scores.cost.toFixed(2)}/5</div>
+                      {restaurantDiscounts.length > 0 && (
+                        <div className="text-xs text-green-600 font-medium">
+                          {restaurantDiscounts.length} offer{restaurantDiscounts.length > 1 ? 's' : ''}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -243,6 +270,11 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
                   <div className="text-right flex-shrink-0 ml-3">
                     <div className="text-sm font-medium">Overall: {c.scores.overall.toFixed(2)}/100</div>
                     <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Cost: {c.scores.cost.toFixed(2)}/5</div>
+                    {restaurantDiscounts.length > 0 && (
+                      <div className="text-xs text-green-600 font-medium mt-1">
+                        {restaurantDiscounts.length} offer{restaurantDiscounts.length > 1 ? 's' : ''}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -281,12 +313,22 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
                   >
                     🏆 Rank #{c.raw.Rank || "?"}
                   </div>
+                  {restaurantDiscounts.length > 0 && (
+                    <div className="mt-3">
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                        🎉 {restaurantDiscounts.length} Active Offer{restaurantDiscounts.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <Tabs defaultValue="overview" className="flex-1">
                   <div className="w-full overflow-x-auto mb-4">
-                    <TabsList className="flex w-max min-w-full lg:w-full lg:grid lg:grid-cols-5 h-auto p-1 gap-1 bg-zinc-100 dark:bg-zinc-800">
+                    <TabsList className="flex w-max min-w-full lg:w-full lg:grid lg:grid-cols-6 h-auto p-1 gap-1 bg-zinc-100 dark:bg-zinc-800">
                       <TabsTrigger value="overview" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-zinc-900 dark:data-[state=active]:bg-zinc-900 dark:data-[state=active]:text-zinc-100">Overview</TabsTrigger>
+                      <TabsTrigger value="offers" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-zinc-900 dark:data-[state=active]:bg-zinc-900 dark:data-[state=active]:text-zinc-100">
+                        Offers{restaurantDiscounts.length > 0 && ` (${restaurantDiscounts.length})`}
+                      </TabsTrigger>
                       <TabsTrigger value="scores" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-zinc-900 dark:data-[state=active]:bg-zinc-900 dark:data-[state=active]:text-zinc-100">Scores</TabsTrigger>
                       <TabsTrigger value="vibe" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-zinc-900 dark:data-[state=active]:bg-zinc-900 dark:data-[state=active]:text-zinc-100">Vibe</TabsTrigger>
                       <TabsTrigger value="practical" className="flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:text-zinc-900 dark:data-[state=active]:bg-zinc-900 dark:data-[state=active]:text-zinc-100">Practical</TabsTrigger>
@@ -340,6 +382,16 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
                     </div>
                   </TabsContent>
 
+                  <TabsContent value="offers" className="space-y-4">
+                    <div className="mb-4">
+                      <h4 className="text-lg font-semibold mb-2">Available Offers & Discounts</h4>
+                      <p className="text-sm text-gray-600">
+                        Save money on your next order from {c.name} with these current offers across different platforms.
+                      </p>
+                    </div>
+                    <DiscountList discounts={restaurantDiscounts} />
+                  </TabsContent>
+
                   <TabsContent value="scores">
                     <div className="space-y-4">
                       {["Food Quality and Taste","Drink Quality and Selection","Ambiance and Interior Comfort","Music Quality and Volume","Service Speed","Staff Friendliness and Attentiveness","Cleanliness and Hygiene","Value for Money / Pricing"].map((k) => (
@@ -383,7 +435,8 @@ export default function ClientGrid({ activeFilters, searchQuery = "", sortOption
             </div>
           </DialogContent>
         </Dialog>
-      ))}
+        );
+      })}
     </div>
   );
 }
