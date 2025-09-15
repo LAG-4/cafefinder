@@ -117,11 +117,12 @@ jobs:
             
             echo "📤 Request: $request_body"
             
+            # Try main endpoint first (with ADMIN_TOKEN if available)
             response=$(curl -s -w "%{http_code}" -X POST -L \
               -H "Content-Type: application/json" \
               -H "User-Agent: GitHub-Actions-CafeFinderBot/1.0" \
               -H "X-GitHub-Run-ID: ${{ github.run_id }}" \
-              $([ -n "${{ secrets.CRON_SECRET }}" ] && echo "-H \"Authorization: Bearer ${{ secrets.CRON_SECRET }}\"") \
+              $([ -n "${{ secrets.ADMIN_TOKEN }}" ] && echo "-H \"Authorization: Bearer ${{ secrets.ADMIN_TOKEN }}\"") \
               -d "$request_body" \
               --connect-timeout 30 \
               --max-time 600 \
@@ -129,6 +130,24 @@ jobs:
               -o response.json 2>/dev/null || echo "000")
             
             http_code="${response: -3}"
+            
+            # If main endpoint fails with 401, try public GitHub Actions endpoint
+            if [ "$http_code" = "401" ]; then
+              echo "🔄 Main endpoint requires auth, trying public GitHub Actions endpoint..."
+              
+              response=$(curl -s -w "%{http_code}" -X POST -L \
+                -H "Content-Type: application/json" \
+                -H "User-Agent: GitHub-Actions-CafeFinderBot/1.0" \
+                -H "X-GitHub-Run-ID: ${{ github.run_id }}" \
+                -d "$request_body" \
+                --connect-timeout 30 \
+                --max-time 600 \
+                "${{ secrets.APP_URL }}/api/scraping/github" \
+                -o response.json 2>/dev/null || echo "000")
+              
+              http_code="${response: -3}"
+              echo "📊 Public endpoint status: $http_code"
+            fi
             echo "📊 HTTP Status: $http_code"
             
             if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 201 ]; then
