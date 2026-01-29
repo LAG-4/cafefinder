@@ -411,11 +411,14 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
           ],
           const Spacer(),
-          Text(
-            'Sorted by ${sortMode.label}',
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+          Flexible(
+            child: Text(
+              'Sorted by ${sortMode.label}',
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+            ),
           ),
         ],
       ),
