@@ -4,13 +4,11 @@ import path from 'path';
 
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONVEX_URL;
 
-if (!CONVEX_URL) {
-  throw new Error('CONVEX_URL environment variable is required');
-}
-
-const scrapingService = new OfferScrapingService(CONVEX_URL);
-
 export async function POST(request: NextRequest) {
+  if (!CONVEX_URL) {
+     return NextResponse.json({ error: 'CONVEX_URL environment variable is required' }, { status: 500 });
+  }
+  const scrapingService = new OfferScrapingService(CONVEX_URL);
   try {
     const { action, placeSlug, batchSize } = await request.json();
     

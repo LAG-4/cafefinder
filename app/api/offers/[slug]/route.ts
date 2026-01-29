@@ -7,11 +7,12 @@ export const dynamic = 'force-dynamic';
 
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONVEX_URL;
 
-if (!CONVEX_URL) {
-  throw new Error('CONVEX_URL environment variable is required');
-}
-
-const convex = new ConvexHttpClient(CONVEX_URL);
+const getConvex = () => {
+  if (!CONVEX_URL) {
+    throw new Error('CONVEX_URL environment variable is required');
+  }
+  return new ConvexHttpClient(CONVEX_URL);
+};
 
 export async function GET(
   req: NextRequest,
@@ -29,6 +30,7 @@ export async function GET(
     }
 
     // Get offers for this place from Convex
+    const convex = getConvex();
     const offers = await convex.query(api.offers.getOffersByPlace, {
       placeSlug: slug,
     });
@@ -54,6 +56,7 @@ export async function GET(
     // Get scraping status to provide last updated info (optional)
     let scrapingStatus = null;
     try {
+      const convex = getConvex();
       scrapingStatus = await convex.query(api.offers.getScrapingStatus, {
         placeSlug: slug,
       });
