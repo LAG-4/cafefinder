@@ -51,70 +51,70 @@ class AppTheme {
   static ThemeData build() {
     final base = ThemeData.dark(useMaterial3: true);
 
-    final textTheme = GoogleFonts.interTextTheme(base.textTheme).copyWith(
-      displayLarge: GoogleFonts.spaceGrotesk(
+    final textTheme = GoogleFonts.workSansTextTheme(base.textTheme).copyWith(
+      displayLarge: GoogleFonts.montserrat(
         fontSize: 32,
         fontWeight: FontWeight.w700,
         color: AppColors.textPrimary,
         letterSpacing: -1,
       ),
-      displayMedium: GoogleFonts.spaceGrotesk(
+      displayMedium: GoogleFonts.montserrat(
         fontSize: 28,
         fontWeight: FontWeight.w700,
         color: AppColors.textPrimary,
         letterSpacing: -0.5,
       ),
-      headlineLarge: GoogleFonts.spaceGrotesk(
+      headlineLarge: GoogleFonts.montserrat(
         fontSize: 24,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      headlineMedium: GoogleFonts.spaceGrotesk(
+      headlineMedium: GoogleFonts.montserrat(
         fontSize: 20,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      titleLarge: GoogleFonts.inter(
+      titleLarge: GoogleFonts.montserrat(
         fontSize: 18,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      titleMedium: GoogleFonts.inter(
+      titleMedium: GoogleFonts.montserrat(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      titleSmall: GoogleFonts.inter(
+      titleSmall: GoogleFonts.montserrat(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      bodyLarge: GoogleFonts.inter(
+      bodyLarge: GoogleFonts.workSans(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         color: AppColors.textSecondary,
       ),
-      bodyMedium: GoogleFonts.inter(
+      bodyMedium: GoogleFonts.workSans(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: AppColors.textSecondary,
       ),
-      bodySmall: GoogleFonts.inter(
+      bodySmall: GoogleFonts.workSans(
         fontSize: 12,
         fontWeight: FontWeight.w400,
         color: AppColors.textMuted,
       ),
-      labelLarge: GoogleFonts.inter(
+      labelLarge: GoogleFonts.workSans(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         color: AppColors.textPrimary,
       ),
-      labelMedium: GoogleFonts.inter(
+      labelMedium: GoogleFonts.workSans(
         fontSize: 12,
         fontWeight: FontWeight.w500,
         color: AppColors.textSecondary,
       ),
-      labelSmall: GoogleFonts.inter(
+      labelSmall: GoogleFonts.workSans(
         fontSize: 11,
         fontWeight: FontWeight.w500,
         color: AppColors.textMuted,
@@ -198,7 +198,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: GoogleFonts.inter(
+          textStyle: GoogleFonts.workSans(
             fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
@@ -212,7 +212,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: GoogleFonts.inter(
+          textStyle: GoogleFonts.workSans(
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
@@ -222,7 +222,7 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primary,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          textStyle: GoogleFonts.inter(
+          textStyle: GoogleFonts.workSans(
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),

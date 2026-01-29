@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../utils/filtering.dart';
 import 'filter_page.dart';
 import 'place_detail_page.dart';
+import 'widgets/animated_background.dart';
 import 'widgets/place_card.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -19,12 +20,36 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
   bool _showSearch = false;
+  bool _showScrollToTop = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    final show = _scrollController.offset > 500;
+    if (show != _showScrollToTop) {
+      setState(() => _showScrollToTop = show);
+    }
+  }
+
+  void _scrollToTop() {
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOutCubic,
+    );
   }
 
   void _applyPreset(_PresetData preset) {
@@ -101,68 +126,99 @@ class _HomePageState extends ConsumerState<HomePage> {
     final placesAsync = ref.watch(placesProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: placesAsync.when(
-          loading: () => const _LoadingState(),
-          error: (error, _) => _ErrorState(
-            message: error.toString(),
-            onRetry: () => ref.invalidate(placesProvider),
-          ),
-          data: (places) {
-            final filtered = applyFilters(
-              places,
-              filterState,
-              sortMode: sortMode,
-            );
-            final types = ref.watch(availableTypesProvider);
-            final locations = ref.watch(availableLocationsProvider);
+      backgroundColor: Colors.transparent,
+      floatingActionButton: AnimatedOpacity(
+        opacity: _showScrollToTop ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 200),
+        child: _showScrollToTop
+            ? FloatingActionButton.small(
+                onPressed: _scrollToTop,
+                backgroundColor: AppColors.surfaceElevated,
+                foregroundColor: AppColors.textPrimary,
+                elevation: 4,
+                child: const Icon(Icons.arrow_upward_rounded),
+              )
+            : null,
+      ),
+      body: AnimatedBackground(
+        child: SafeArea(
+          child: placesAsync.when(
+            loading: () => const _LoadingState(),
+            error: (error, _) => _ErrorState(
+              message: error.toString(),
+              onRetry: () => ref.invalidate(placesProvider),
+            ),
+            data: (places) {
+              final filtered = applyFilters(
+                places,
+                filterState,
+                sortMode: sortMode,
+              );
+              final types = ref.watch(availableTypesProvider);
+              final locations = ref.watch(availableLocationsProvider);
 
-            return CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(child: _buildHeader(context, filterCount)),
-                SliverToBoxAdapter(child: _buildPresets(context, activePreset)),
-                SliverToBoxAdapter(
-                  child: _buildResultsBar(
-                    context,
-                    filtered,
-                    activePreset,
-                    sortMode,
-                  ),
-                ),
-                if (filterCount > 0 && activePreset == null)
-                  SliverToBoxAdapter(
-                    child: _buildActiveFilters(context, filterState),
-                  ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                  sliver: SliverLayoutBuilder(
-                    builder: (context, constraints) {
-                      final width = constraints.crossAxisExtent;
-                      final crossAxisCount = width > 600 ? 2 : 1;
-                      return SliverGrid(
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          final place = filtered[index];
-                          return PlaceCard(
-                            place: place,
-                            index: index,
-                            onTap: () => _openPlaceDetail(place),
+              return Scrollbar(
+                controller: _scrollController,
+                thumbVisibility: true,
+                interactive: true,
+                radius: const Radius.circular(8),
+                thickness: 6,
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: _buildHeader(context, filterCount),
+                    ),
+                    SliverToBoxAdapter(
+                      child: _buildPresets(context, activePreset),
+                    ),
+                    SliverToBoxAdapter(
+                      child: _buildResultsBar(
+                        context,
+                        filtered,
+                        activePreset,
+                        sortMode,
+                      ),
+                    ),
+                    if (filterCount > 0 && activePreset == null)
+                      SliverToBoxAdapter(
+                        child: _buildActiveFilters(context, filterState),
+                      ),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                      sliver: SliverLayoutBuilder(
+                        builder: (context, constraints) {
+                          final width = constraints.crossAxisExtent;
+                          final crossAxisCount = width > 600 ? 2 : 1;
+                          return SliverGrid(
+                            delegate: SliverChildBuilderDelegate((
+                              context,
+                              index,
+                            ) {
+                              final place = filtered[index];
+                              return PlaceCard(
+                                place: place,
+                                index: index,
+                                onTap: () => _openPlaceDetail(place),
+                              );
+                            }, childCount: filtered.length),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: crossAxisCount,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                  childAspectRatio: 1.0,
+                                ),
                           );
-                        }, childCount: filtered.length),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: crossAxisCount,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 1.0,
-                        ),
-                      );
-                    },
-                  ),
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );

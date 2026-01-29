@@ -6,6 +6,7 @@ import '../models/place.dart';
 import '../models/review.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
+import 'widgets/animated_background.dart';
 
 class PlaceDetailPage extends ConsumerStatefulWidget {
   const PlaceDetailPage({super.key, required this.place});
@@ -42,217 +43,223 @@ class _PlaceDetailPageState extends ConsumerState<PlaceDetailPage> {
     final hasReviewError = reviewsAsync.hasError;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addReview,
         icon: const Icon(Icons.edit_rounded),
         label: const Text('Review'),
       ),
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // App bar with image
-          SliverAppBar(
-            expandedHeight: 280,
-            pinned: true,
-            backgroundColor: AppColors.background,
-            leading: Padding(
-              padding: const EdgeInsets.all(8),
-              child: CircleAvatar(
-                backgroundColor: AppColors.surface,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, size: 20),
-                  onPressed: () => Navigator.pop(context),
+      body: AnimatedBackground(
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // App bar with image
+            SliverAppBar(
+              expandedHeight: 280,
+              pinned: true,
+              backgroundColor: Colors.transparent,
+              leading: Padding(
+                padding: const EdgeInsets.all(8),
+                child: CircleAvatar(
+                  backgroundColor: AppColors.surface,
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back, size: 20),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+              ),
+              flexibleSpace: FlexibleSpaceBar(
+                background: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (place.heroImage.isNotEmpty)
+                      Image.network(
+                        place.heroImage,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            color: AppColors.surfaceLight,
+                            child: const Center(
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          );
+                        },
+                        errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                      )
+                    else
+                      _buildPlaceholder(),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            AppColors.background.withAlpha(230),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 16,
+                      right: 16,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: place.rank <= 3
+                              ? AppColors.warning
+                              : AppColors.surface,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '#${place.rank}',
+                          style: TextStyle(
+                            color: place.rank <= 3
+                                ? Colors.black
+                                : AppColors.textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (place.heroImage.isNotEmpty)
-                    Image.network(
-                      place.heroImage,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          color: AppColors.surfaceLight,
-                          child: const Center(
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        );
-                      },
-                      errorBuilder: (_, __, ___) => _buildPlaceholder(),
-                    )
-                  else
-                    _buildPlaceholder(),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          AppColors.background.withAlpha(230),
-                        ],
-                      ),
+
+            // Content
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title
+                    Text(
+                      place.name,
+                      style: Theme.of(context).textTheme.headlineLarge,
                     ),
-                  ),
-                  Positioned(
-                    bottom: 16,
-                    right: 16,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: place.rank <= 3
-                            ? AppColors.warning
-                            : AppColors.surface,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '#${place.rank}',
-                        style: TextStyle(
-                          color: place.rank <= 3
-                              ? Colors.black
-                              : AppColors.textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                    const SizedBox(height: 8),
+
+                    // Type and location
+                    Row(
+                      children: [
+                        if (_getDisplayType(place).isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withAlpha(26),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              _getDisplayType(place),
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        if (_getDisplayType(place).isNotEmpty)
+                          const SizedBox(width: 8),
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 16,
+                          color: AppColors.textMuted,
                         ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Content
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title
-                  Text(
-                    place.name,
-                    style: Theme.of(context).textTheme.headlineLarge,
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Type and location
-                  Row(
-                    children: [
-                      if (_getDisplayType(place).isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withAlpha(26),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                        const SizedBox(width: 4),
+                        Expanded(
                           child: Text(
-                            _getDisplayType(place),
-                            style: const TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w500,
-                              fontSize: 13,
-                            ),
+                            place.location,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                      if (_getDisplayType(place).isNotEmpty)
-                        const SizedBox(width: 8),
-                      const Icon(
-                        Icons.location_on_outlined,
-                        size: 16,
-                        color: AppColors.textMuted,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          place.location,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
 
-                  // Score card
-                  _ScoreCard(place: place),
-                  const SizedBox(height: 20),
+                    // Score card
+                    _ScoreCard(place: place),
+                    const SizedBox(height: 20),
 
-                  // Action buttons
-                  _ActionButtons(place: place),
-                  const SizedBox(height: 24),
+                    // Action buttons
+                    _ActionButtons(place: place),
+                    const SizedBox(height: 24),
 
-                  // Community ratings
-                  _Section(
-                    title: 'Community Ratings',
-                    child: reviewsAsync.isLoading
-                        ? const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(20),
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          )
-                        : hasReviewError
-                        ? Text(
-                            'Could not load reviews yet.',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          )
-                        : _CommunitySummary(reviews: reviews),
-                  ),
-                  const SizedBox(height: 16),
+                    // Community ratings
+                    _Section(
+                      title: 'Community Ratings',
+                      child: reviewsAsync.isLoading
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(20),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            )
+                          : hasReviewError
+                          ? Text(
+                              'Could not load reviews yet.',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            )
+                          : _CommunitySummary(reviews: reviews),
+                    ),
+                    const SizedBox(height: 16),
 
-                  // Rating sections
-                  ...sections.entries.map(
-                    (entry) => Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: _Section(
-                        title: entry.key,
-                        child: Column(
-                          children: entry.value.map((metric) {
-                            return _RatingRow(
-                              label: metric.label,
-                              value: place.ratings[metric.key],
-                            );
-                          }).toList(),
+                    // Rating sections
+                    ...sections.entries.map(
+                      (entry) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _Section(
+                          title: entry.key,
+                          child: Column(
+                            children: entry.value.map((metric) {
+                              return _RatingRow(
+                                label: metric.label,
+                                value: place.ratings[metric.key],
+                              );
+                            }).toList(),
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-                  // Recent reviews
-                  _Section(
-                    title: 'Recent Reviews',
-                    child: reviewsAsync.isLoading
-                        ? const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(20),
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          )
-                        : hasReviewError
-                        ? Text(
-                            'Could not load reviews yet.',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          )
-                        : _ReviewList(reviews: reviews),
-                  ),
-                ],
+                    // Recent reviews
+                    _Section(
+                      title: 'Recent Reviews',
+                      child: reviewsAsync.isLoading
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(20),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            )
+                          : hasReviewError
+                          ? Text(
+                              'Could not load reviews yet.',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            )
+                          : _ReviewList(reviews: reviews),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
