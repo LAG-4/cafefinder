@@ -1,5 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../data/place_repository.dart';
 import '../data/review_repository.dart';
 import '../models/filter_state.dart';
@@ -7,15 +7,16 @@ import '../models/place.dart';
 import '../models/review.dart';
 import '../utils/filtering.dart';
 
-const _placesAssetPath =
-    'assets/data/hyderabad_top_100_cafes_restaurants_bars_ranked.csv';
+final firestoreProvider = Provider<FirebaseFirestore>((ref) {
+  return FirebaseFirestore.instance;
+});
 
 final placeRepositoryProvider = Provider<PlaceRepository>((ref) {
-  return PlaceRepository(assetPath: _placesAssetPath);
+  return PlaceRepository(firestore: ref.watch(firestoreProvider));
 });
 
 final reviewRepositoryProvider = Provider<ReviewRepository>((ref) {
-  return ReviewRepository();
+  return ReviewRepository(firestore: ref.watch(firestoreProvider));
 });
 
 final placesProvider = FutureProvider<List<Place>>((ref) async {

@@ -7,13 +7,9 @@ import 'package:cafefindhyd/state/app_state.dart';
 import 'package:cafefindhyd/ui/home_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class FakePlaceRepository extends PlaceRepository {
-  FakePlaceRepository() : super(assetPath: '');
-
+class FakePlaceRepository implements PlaceRepository {
   @override
-  Future<List<Place>> loadPlaces() async {
-    return [];
-  }
+  Future<List<Place>> loadPlaces() async => [];
 }
 
 void main() {

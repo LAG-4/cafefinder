@@ -32,7 +32,7 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
-
+cafefinder-eafdf-firebase-adminsdk-fbsvc-39f8c38c14.json
 # Symbolication related
 app.*.symbols
 

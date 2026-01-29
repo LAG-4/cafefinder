@@ -1,114 +1,124 @@
-import 'package:csv/csv.dart';
-import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/place.dart';
 
 class PlaceRepository {
-  PlaceRepository({required this.assetPath});
+  PlaceRepository({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  final String assetPath;
+  final FirebaseFirestore _firestore;
 
   Future<List<Place>> loadPlaces() async {
     try {
-      final csvString = await rootBundle.loadString(assetPath);
-      final rows = _parseCsv(csvString);
-      if (rows.isEmpty) return [];
+      final snapshot = await _firestore
+          .collection('places')
+          .orderBy('rank')
+          .get();
 
-      final headerRow = rows.first
-          .map((cell) => cell.toString().trim())
+      return snapshot.docs
+          .map((doc) => _fromFirestore(doc.id, doc.data()))
           .toList();
-      final headerIndices = <String, List<int>>{};
-      for (var i = 0; i < headerRow.length; i++) {
-        headerIndices.putIfAbsent(headerRow[i], () => []).add(i);
-      }
-
-      String? getValue(List<dynamic> row, String header) {
-        final indices = headerIndices[header] ?? [];
-        for (final index in indices) {
-          if (index >= row.length) continue;
-          final raw = row[index]?.toString().trim();
-          if (raw != null && raw.isNotEmpty) return raw;
-        }
-        return null;
-      }
-
-      final places = <Place>[];
-      for (var i = 1; i < rows.length; i++) {
-        final row = rows[i];
-        if (row.isEmpty) continue;
-
-        final name = getValue(row, 'Name') ?? '';
-        final location = getValue(row, 'Location') ?? '';
-        final type = getValue(row, 'Type') ?? '';
-        if (name.isEmpty || location.isEmpty || type.isEmpty) continue;
-
-        final rankValue = getValue(row, 'Rank') ?? '0';
-        final rank = int.tryParse(rankValue) ?? 0;
-        final aestheticValue = getValue(row, 'Aesthetic_Score') ?? '0';
-        final aestheticScore = double.tryParse(aestheticValue) ?? 0;
-
-        final imagesRaw = getValue(row, 'Images') ?? '';
-        final imageUrls = _splitImageUrls(imagesRaw);
-
-        final ratings = <String, String>{};
-        for (final metric in ratingMetrics) {
-          String? value;
-          for (final header in metric.headers) {
-            value ??= getValue(row, header);
-          }
-          if (value != null && value.isNotEmpty) {
-            ratings[metric.key] = value;
-          }
-        }
-
-        final place = Place(
-          rank: rank,
-          name: name,
-          location: location,
-          type: type,
-          imageUrls: imageUrls,
-          aestheticScore: aestheticScore,
-          ratings: ratings,
-          slug: slugify('$name-$location'),
-          typeTags: splitTypeTags(type),
-          locationTags: splitLocationTags(location),
-          zomato: getValue(row, 'Zomato'),
-          swiggy: getValue(row, 'Swiggy'),
-          dineout: getValue(row, 'Dineout'),
-        );
-        places.add(place);
-      }
-
-      return places;
     } catch (error) {
       throw PlaceLoadException('Failed to load places data: $error');
     }
   }
 
-  List<String> _splitImageUrls(String raw) {
-    if (raw.trim().isEmpty) return [];
-    final parts = raw.split(RegExp(r',\s*(?=https?://)'));
-    return parts
-        .map((part) => part.trim())
-        .where((part) => part.isNotEmpty)
-        .toList();
-  }
+  Place _fromFirestore(String id, Map<String, dynamic> data) {
+    final rawScores = Map<String, dynamic>.from(
+      (data['rawScores'] as Map?) ?? const {},
+    );
 
-  List<List<dynamic>> _parseCsv(String csvString) {
-    final converters = [
-      const CsvToListConverter(eol: '\n'),
-      const CsvToListConverter(eol: '\r\n'),
-      const CsvToListConverter(eol: '\r'),
-    ];
+    final name = data['name']?.toString() ?? '';
+    final location = data['area']?.toString() ?? '';
+    final type = data['type']?.toString() ?? '';
+    final image = data['image']?.toString() ?? '';
+    final imageUrl = _isHttpUrl(image) ? image : '';
 
-    for (final converter in converters) {
-      final rows = converter.convert(csvString);
-      if (rows.length > 1) return rows;
+    final ratings = <String, String>{};
+    for (final entry in _ratingKeyMap.entries) {
+      final value = rawScores[entry.value];
+      if (value is String && value.trim().isNotEmpty) {
+        ratings[entry.key] = value;
+      }
     }
 
-    return const CsvToListConverter(eol: '\n').convert(csvString);
+    final fallbackOverall = _parseDouble((data['scores'] as Map?)?['overall']);
+    final aestheticScore = _parseDouble(rawScores['aestheticScore']);
+
+    return Place(
+      rank: _parseInt(data['rank']),
+      name: name,
+      location: location,
+      type: type,
+      imageUrls: imageUrl.isNotEmpty ? [imageUrl] : const [],
+      aestheticScore: aestheticScore > 0 ? aestheticScore : fallbackOverall,
+      ratings: ratings,
+      slug: data['slug']?.toString() ?? id,
+      typeTags: splitTypeTags(type),
+      locationTags: splitLocationTags(location),
+      zomato: null,
+      swiggy: null,
+      dineout: null,
+    );
+  }
+
+  int _parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.round();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  double _parseDouble(dynamic value) {
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  bool _isHttpUrl(String value) {
+    final uri = Uri.tryParse(value);
+    if (uri == null) return false;
+    return uri.scheme == 'http' || uri.scheme == 'https';
   }
 }
+
+const Map<String, String> _ratingKeyMap = {
+  'wifiSpeed': 'wifiSpeedAndReliability',
+  'laptopWorkFriendliness': 'laptopWorkFriendliness',
+  'powerOutlets': 'availabilityOfPowerOutlets',
+  'noiseLevel': 'noiseLevel',
+  'seatingComfort': 'seatingComfort',
+  'ambiance': 'ambianceAndInteriorComfort',
+  'crowdVibe': 'crowdVibe',
+  'crowdDensity': 'crowdDensity',
+  'communityVibe': 'communityVibe',
+  'socialMediaFriendliness': 'socialMediaFriendliness',
+  'funFactor': 'funFactor',
+  'lighting': 'lighting',
+  'musicQuality': 'musicQualityAndVolume',
+  'temperatureComfort': 'temperatureComfort',
+  'lineOfSight': 'lineOfSight',
+  'foodQuality': 'foodQualityAndTaste',
+  'drinkQuality': 'drinkQualityAndSelection',
+  'valueForMoney': 'valueForMoney',
+  'menuClarity': 'menuClarityAndUsability',
+  'serviceSpeed': 'serviceSpeed',
+  'staffFriendliness': 'staffFriendliness',
+  'cleanliness': 'cleanlinessAndHygiene',
+  'restroomCleanliness': 'restroomCleanliness',
+  'foodSafety': 'foodSafety',
+  'proactiveService': 'proactiveService',
+  'waitTimes': 'waitTimes',
+  'easeOfReservations': 'easeOfReservations',
+  'paymentConvenience': 'paymentConvenience',
+  'safety': 'safety',
+  'inclusionForeigners': 'inclusionForeigners',
+  'racismFreeEnvironment': 'racismFreeEnvironment',
+  'airQuality': 'airQuality',
+  'walkabilityAccessibility': 'walkabilityAccessibility',
+};
 
 class PlaceLoadException implements Exception {
   PlaceLoadException(this.message);

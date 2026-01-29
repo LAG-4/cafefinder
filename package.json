@@ -19,7 +19,8 @@
     "scraper:fast-batch": "tsx scripts/scrape-offers-fast.ts --batch",
     "scraper:fast-continuous": "tsx scripts/scrape-offers-fast.ts",
     "cleanup:offers": "tsx scripts/cleanup-offers.ts",
-    "cleanup:daily": "tsx scripts/daily-maintenance.ts"
+    "cleanup:daily": "tsx scripts/daily-maintenance.ts",
+    "seed:firebase": "tsx scripts/seed-firestore.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -36,6 +37,7 @@
     "convex": "^1.31.6",
     "csv-parse": "^6.1.0",
     "dotenv": "^17.2.2",
+    "firebase-admin": "^12.6.0",
     "fuse.js": "^7.1.0",
     "lru-cache": "^11.2.1",
     "lucide-react": "^0.473.0",
