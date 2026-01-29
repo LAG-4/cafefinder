@@ -28,7 +28,7 @@ class _PlaceDetailPageState extends ConsumerState<PlaceDetailPage> {
       builder: (context) => _ReviewSheet(place: widget.place),
     );
 
-    if (review == null) return;
+    if (!mounted || review == null) return;
     await ref.read(reviewRepositoryProvider).addReview(review);
     ref.invalidate(reviewsProvider(widget.place.slug));
   }

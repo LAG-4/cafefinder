@@ -11,10 +11,12 @@ class PlaceRepository {
   Future<List<Place>> loadPlaces() async {
     try {
       final csvString = await rootBundle.loadString(assetPath);
-      final rows = const CsvToListConverter().convert(csvString);
+      final rows = _parseCsv(csvString);
       if (rows.isEmpty) return [];
 
-      final headerRow = rows.first.map((cell) => cell.toString()).toList();
+      final headerRow = rows.first
+          .map((cell) => cell.toString().trim())
+          .toList();
       final headerIndices = <String, List<int>>{};
       for (var i = 0; i < headerRow.length; i++) {
         headerIndices.putIfAbsent(headerRow[i], () => []).add(i);
@@ -90,6 +92,21 @@ class PlaceRepository {
         .map((part) => part.trim())
         .where((part) => part.isNotEmpty)
         .toList();
+  }
+
+  List<List<dynamic>> _parseCsv(String csvString) {
+    final converters = [
+      const CsvToListConverter(eol: '\n'),
+      const CsvToListConverter(eol: '\r\n'),
+      const CsvToListConverter(eol: '\r'),
+    ];
+
+    for (final converter in converters) {
+      final rows = converter.convert(csvString);
+      if (rows.length > 1) return rows;
+    }
+
+    return const CsvToListConverter(eol: '\n').convert(csvString);
   }
 }
 

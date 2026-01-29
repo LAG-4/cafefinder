@@ -11,10 +11,14 @@ class ReviewRepository {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_storageKey);
     if (raw == null || raw.isEmpty) return [];
-    final decoded = jsonDecode(raw) as List<dynamic>;
-    return decoded
-        .map((item) => Review.fromJson(item as Map<String, dynamic>))
-        .toList();
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .map((item) => Review.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   Future<List<Review>> getReviewsForPlace(String placeSlug) async {

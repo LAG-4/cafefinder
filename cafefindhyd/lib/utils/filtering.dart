@@ -3,7 +3,7 @@ import '../models/place.dart';
 
 enum SortMode {
   rank('Rank', const []),
-  work('Work-friendly', const [
+  work('Work Friendly', const [
     'wifiSpeed',
     'powerOutlets',
     'laptopWorkFriendliness',
@@ -11,9 +11,9 @@ enum SortMode {
     'seatingComfort',
   ]),
   budget('Budget', const ['valueForMoney']),
-  coffee('Coffee quality', const ['drinkQuality']),
-  dateNight('Date night', const ['ambiance', 'lighting', 'musicQuality']),
-  safeInclusive('Safe & inclusive', const [
+  coffee('Coffee', const ['drinkQuality']),
+  dateNight('Date Night', const ['ambiance', 'lighting', 'musicQuality']),
+  safeInclusive('Safe & Inclusive', const [
     'safety',
     'inclusionForeigners',
     'racismFreeEnvironment',
