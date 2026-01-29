@@ -157,64 +157,69 @@ class _HomePageState extends ConsumerState<HomePage> {
               final types = ref.watch(availableTypesProvider);
               final locations = ref.watch(availableLocationsProvider);
 
-              return Scrollbar(
-                controller: _scrollController,
-                thumbVisibility: true,
-                interactive: true,
-                radius: const Radius.circular(8),
-                thickness: 6,
-                child: CustomScrollView(
+              return RefreshIndicator(
+                onRefresh: () => ref.refresh(placesProvider.future),
+                child: Scrollbar(
                   controller: _scrollController,
-                  physics: const BouncingScrollPhysics(),
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: _buildHeader(context, filterCount),
+                  thumbVisibility: true,
+                  interactive: true,
+                  radius: const Radius.circular(8),
+                  thickness: 6,
+                  child: CustomScrollView(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
                     ),
-                    SliverToBoxAdapter(
-                      child: _buildPresets(context, activePreset),
-                    ),
-                    SliverToBoxAdapter(
-                      child: _buildResultsBar(
-                        context,
-                        filtered,
-                        activePreset,
-                        sortMode,
-                      ),
-                    ),
-                    if (filterCount > 0 && activePreset == null)
+                    slivers: [
                       SliverToBoxAdapter(
-                        child: _buildActiveFilters(context, filterState),
+                        child: _buildHeader(context, filterCount),
                       ),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                      sliver: SliverLayoutBuilder(
-                        builder: (context, constraints) {
-                          final width = constraints.crossAxisExtent;
-                          final crossAxisCount = width > 600 ? 2 : 1;
-                          return SliverGrid(
-                            delegate: SliverChildBuilderDelegate((
-                              context,
-                              index,
-                            ) {
-                              final place = filtered[index];
-                              return PlaceCard(
-                                place: place,
-                                index: index,
-                                onTap: () => _openPlaceDetail(place),
-                              );
-                            }, childCount: filtered.length),
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: crossAxisCount,
-                                  crossAxisSpacing: 12,
-                                  mainAxisSpacing: 12,
-                                  childAspectRatio: 1.0,
-                                ),
-                          );
-                        },
+                      SliverToBoxAdapter(
+                        child: _buildPresets(context, activePreset),
                       ),
-                    ),
-                  ],
+                      SliverToBoxAdapter(
+                        child: _buildResultsBar(
+                          context,
+                          filtered,
+                          activePreset,
+                          sortMode,
+                        ),
+                      ),
+                      if (filterCount > 0 && activePreset == null)
+                        SliverToBoxAdapter(
+                          child: _buildActiveFilters(context, filterState),
+                        ),
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                        sliver: SliverLayoutBuilder(
+                          builder: (context, constraints) {
+                            final width = constraints.crossAxisExtent;
+                            final crossAxisCount = width > 600 ? 2 : 1;
+                            return SliverGrid(
+                              delegate: SliverChildBuilderDelegate((
+                                context,
+                                index,
+                              ) {
+                                final place = filtered[index];
+                                return PlaceCard(
+                                  place: place,
+                                  index: index,
+                                  onTap: () => _openPlaceDetail(place),
+                                );
+                              }, childCount: filtered.length),
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: crossAxisCount,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12,
+                                    childAspectRatio: 1.0,
+                                  ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
