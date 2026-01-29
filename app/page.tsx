@@ -2,7 +2,12 @@
 import FilterSidebar from "../components/FilterSidebar";
 import TopBar from "../components/TopBar";
 import { Suspense, useState } from "react";
-import ClientGrid from "./sections/ClientGrid";
+import dynamic from "next/dynamic";
+
+const ClientGrid = dynamic(() => import("./sections/ClientGrid"), {
+  ssr: false,
+  loading: () => <div className="text-center py-8">Loading cafes...</div>
+});
 
 export default function Home() {
   const [activeFilters, setActiveFilters] = useState<Record<string, boolean>>({});

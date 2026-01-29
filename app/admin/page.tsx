@@ -1,6 +1,6 @@
 'use client';
 
-import AdminProtected from '@/components/AdminProtected';
+import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -11,6 +11,12 @@ import {
   ExternalLink
 } from 'lucide-react';
 import Link from 'next/link';
+
+// Dynamically import AdminProtected with SSR disabled to avoid build-time Convex issues
+const AdminProtected = dynamic(() => import('@/components/AdminProtected'), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center min-h-screen">Loading admin area...</div>
+});
 
 export default function AdminPage() {
   return (
