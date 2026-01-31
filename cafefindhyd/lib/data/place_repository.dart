@@ -45,6 +45,12 @@ class PlaceRepository {
     final fallbackOverall = _parseDouble((data['scores'] as Map?)?['overall']);
     final aestheticScore = _parseDouble(rawScores['aestheticScore']);
 
+    final zomatoUrl = _getPlatformUrl(data, 'zomato');
+    final swiggyUrl =
+        _getPlatformUrl(data, 'swiggy_dineout') ??
+        _getPlatformUrl(data, 'swiggy');
+    final dineoutUrl = _getPlatformUrl(data, 'dineout');
+
     return Place(
       rank: _parseInt(data['rank']),
       name: name,
@@ -56,10 +62,25 @@ class PlaceRepository {
       slug: data['slug']?.toString() ?? id,
       typeTags: splitTypeTags(type),
       locationTags: splitLocationTags(location),
-      zomato: null,
-      swiggy: null,
-      dineout: null,
+      zomato: zomatoUrl,
+      swiggy: swiggyUrl,
+      dineout: dineoutUrl,
     );
+  }
+
+  String? _getPlatformUrl(Map<String, dynamic> data, String providerKey) {
+    final platforms = data['platforms'];
+    if (platforms is Map) {
+      final entry = platforms[providerKey];
+      if (entry is Map) {
+        final url = entry['url']?.toString() ?? '';
+        if (_isHttpUrl(url)) return url;
+      }
+    }
+
+    final flat = data['platforms.$providerKey.url']?.toString() ?? '';
+    if (_isHttpUrl(flat)) return flat;
+    return null;
   }
 
   int _parseInt(dynamic value) {

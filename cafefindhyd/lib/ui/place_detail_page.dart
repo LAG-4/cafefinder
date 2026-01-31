@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/place.dart';
+import '../models/place_offers.dart';
 import '../models/review.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
@@ -194,6 +195,9 @@ class _PlaceDetailPageState extends ConsumerState<PlaceDetailPage> {
 
                     // Action buttons
                     _ActionButtons(place: place),
+
+                    const SizedBox(height: 16),
+                    _OffersSection(placeId: place.slug),
                     const SizedBox(height: 24),
 
                     // Community ratings
@@ -442,6 +446,479 @@ class _ActionButtons extends StatelessWidget {
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
+}
+
+class _OffersSection extends ConsumerStatefulWidget {
+  const _OffersSection({required this.placeId});
+
+  final String placeId;
+
+  @override
+  ConsumerState<_OffersSection> createState() => _OffersSectionState();
+}
+
+class _OffersSectionState extends ConsumerState<_OffersSection> {
+  bool _showAll = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final offersAsync = ref.watch(placeOffersProvider(widget.placeId));
+
+    return _Section(
+      title: 'Best Deals',
+      child: offersAsync.when(
+        loading: () => const Center(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+        error: (error, _) => Text(
+          _offersErrorMessage(error),
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        data: (placeOffers) {
+          final providers =
+              placeOffers?.providers ?? const <String, ProviderOffers>{};
+
+          final allOffers = <Offer>[];
+          for (final provider in providers.values) {
+            allOffers.addAll(provider.offers);
+          }
+
+          final lastUpdated =
+              _latestFetchedAt(providers.values) ?? placeOffers?.updatedAt;
+          final hasAnyProvider = providers.isNotEmpty;
+          final hasStale = providers.values.any((p) => p.stale);
+
+          if (allOffers.isEmpty) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (lastUpdated != null)
+                  Text(
+                    'Last updated ${_formatRelativeTime(lastUpdated)}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                if (lastUpdated != null) const SizedBox(height: 8),
+                Text(
+                  hasAnyProvider
+                      ? 'No cached deals found for this place yet.'
+                      : 'Deals will appear here once they are scraped.'
+                            ' Check back later.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                if (hasAnyProvider) ...[
+                  const SizedBox(height: 12),
+                  _SourcesRow(providers: providers, onOpenUrl: _openUrl),
+                ],
+              ],
+            );
+          }
+
+          final sorted = List<Offer>.from(allOffers)
+            ..sort((a, b) => _compareOffers(b, a));
+          final limit = _showAll ? 12 : 4;
+          final visible = sorted.take(limit).toList();
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (lastUpdated != null)
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Last updated ${_formatRelativeTime(lastUpdated)}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                    if (hasStale)
+                      _Tag(
+                        label: 'stale',
+                        color: AppColors.warning,
+                        textColor: Colors.black,
+                      ),
+                  ],
+                ),
+              if (lastUpdated != null) const SizedBox(height: 12),
+
+              ...visible.map(
+                (offer) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _OfferTile(
+                    offer: offer,
+                    provider: providers[offer.source.providerKey],
+                    onVerify: () => _openUrl(
+                      context,
+                      offer.source.sourceUrl.isNotEmpty
+                          ? offer.source.sourceUrl
+                          : (providers[offer.source.providerKey]?.sourceUrl ??
+                                ''),
+                    ),
+                  ),
+                ),
+              ),
+
+              if (sorted.length > 4)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: () => setState(() => _showAll = !_showAll),
+                    child: Text(_showAll ? 'Show less' : 'Show all deals'),
+                  ),
+                ),
+
+              const SizedBox(height: 8),
+              _SourcesRow(providers: providers, onOpenUrl: _openUrl),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _openUrl(BuildContext context, String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.scheme != 'https') {
+      _showMessage(context, 'Invalid link');
+      return;
+    }
+
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && context.mounted) {
+      _showMessage(context, 'Could not open link');
+    }
+  }
+
+  void _showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+String _offersErrorMessage(Object error) {
+  final message = error.toString();
+  if (message.toLowerCase().contains('permission-denied')) {
+    return 'Deals exist in Firestore, but the app is blocked by Firestore rules.'
+        ' Allow read access to the placeOffers collection.';
+  }
+  return 'Could not load deals yet. ($message)';
+}
+
+class _SourcesRow extends StatelessWidget {
+  const _SourcesRow({required this.providers, required this.onOpenUrl});
+
+  final Map<String, ProviderOffers> providers;
+  final Future<void> Function(BuildContext context, String url) onOpenUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final entries =
+        providers.entries.where((e) => e.value.sourceUrl.isNotEmpty).toList()
+          ..sort(
+            (a, b) => _providerMeta(
+              a.key,
+            ).label.compareTo(_providerMeta(b.key).label),
+          );
+
+    if (entries.isEmpty) return const SizedBox.shrink();
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: entries.map((entry) {
+        final meta = _providerMeta(entry.key);
+        return GestureDetector(
+          onTap: () => onOpenUrl(context, entry.value.sourceUrl),
+          child: _Tag(
+            label: 'Verify on ${meta.label}',
+            color: meta.color,
+            textColor: Colors.white,
+            icon: meta.icon,
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _OfferTile extends StatelessWidget {
+  const _OfferTile({
+    required this.offer,
+    required this.provider,
+    required this.onVerify,
+  });
+
+  final Offer offer;
+  final ProviderOffers? provider;
+  final VoidCallback onVerify;
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = _providerMeta(offer.source.providerKey);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: meta.color.withAlpha(38),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: meta.color.withAlpha(90)),
+            ),
+            child: Text(
+              _badgeText(offer),
+              style: TextStyle(
+                color: meta.color,
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    _Tag(
+                      label: meta.label,
+                      color: meta.color,
+                      textColor: Colors.white,
+                      icon: meta.icon,
+                    ),
+                    if (offer.mode != 'unknown')
+                      _Tag(
+                        label: _modeLabel(offer.mode),
+                        color: AppColors.surfaceElevated,
+                        textColor: AppColors.textPrimary,
+                      ),
+                    if (provider?.stale == true)
+                      _Tag(
+                        label: 'stale',
+                        color: AppColors.warning,
+                        textColor: Colors.black,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _cleanTitle(offer.title),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: onVerify,
+                    icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                    label: const Text('Verify'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  const _Tag({
+    required this.label,
+    required this.color,
+    required this.textColor,
+    this.icon,
+  });
+
+  final String label;
+  final Color color;
+  final Color textColor;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: textColor),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProviderMeta {
+  const _ProviderMeta({
+    required this.label,
+    required this.color,
+    required this.icon,
+  });
+
+  final String label;
+  final Color color;
+  final IconData icon;
+}
+
+_ProviderMeta _providerMeta(String providerKey) {
+  switch (providerKey) {
+    case 'zomato':
+      return const _ProviderMeta(
+        label: 'Zomato',
+        color: Color(0xFFE23744),
+        icon: Icons.restaurant_rounded,
+      );
+    case 'swiggy_dineout':
+      return const _ProviderMeta(
+        label: 'Swiggy Dineout',
+        color: Color(0xFFFF5200),
+        icon: Icons.local_offer_rounded,
+      );
+    case 'eazydiner':
+      return const _ProviderMeta(
+        label: 'EazyDiner',
+        color: Color(0xFFF59E0B),
+        icon: Icons.local_dining_rounded,
+      );
+    case 'dineout':
+      return const _ProviderMeta(
+        label: 'Dineout',
+        color: Color(0xFF10B981),
+        icon: Icons.local_offer_rounded,
+      );
+    default:
+      return const _ProviderMeta(
+        label: 'Deals',
+        color: AppColors.primary,
+        icon: Icons.local_offer_rounded,
+      );
+  }
+}
+
+int _compareOffers(Offer a, Offer b) {
+  final ap = _offerPriority(a);
+  final bp = _offerPriority(b);
+  if (ap != bp) return ap.compareTo(bp);
+
+  final av = a.value ?? 0;
+  final bv = b.value ?? 0;
+  if (av != bv) return av.compareTo(bv);
+
+  final am = a.maxDiscount ?? 0;
+  final bm = b.maxDiscount ?? 0;
+  if (am != bm) return am.compareTo(bm);
+
+  return a.title.compareTo(b.title);
+}
+
+int _offerPriority(Offer offer) {
+  switch (offer.type) {
+    case 'percentage':
+      return 4;
+    case 'flat':
+      return 3;
+    case 'cashback':
+      return 2;
+    case 'coupon':
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+String _badgeText(Offer offer) {
+  final value = offer.value;
+  if (offer.type == 'percentage' && value != null) {
+    return '${value.round()}% off';
+  }
+  if (offer.type == 'flat' && value != null) {
+    return 'Rs ${value.round()} off';
+  }
+  if (offer.type == 'cashback' && value != null) {
+    return 'Rs ${value.round()} cashback';
+  }
+  if (offer.type == 'coupon' && (offer.couponCode ?? '').isNotEmpty) {
+    return offer.couponCode!;
+  }
+  return 'deal';
+}
+
+String _modeLabel(String mode) {
+  switch (mode) {
+    case 'prebook':
+      return 'pre-book';
+    case 'walkin':
+      return 'walk-in';
+    case 'billpay':
+      return 'bill pay';
+    case 'bank':
+      return 'bank';
+    default:
+      return mode;
+  }
+}
+
+String _cleanTitle(String text) {
+  final cleaned = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  return cleaned;
+}
+
+DateTime? _latestFetchedAt(Iterable<ProviderOffers> providers) {
+  DateTime? latest;
+  for (final provider in providers) {
+    final fetchedAt = provider.fetchedAt;
+    if (fetchedAt == null) continue;
+    if (latest == null || fetchedAt.isAfter(latest)) {
+      latest = fetchedAt;
+    }
+  }
+  return latest;
+}
+
+String _formatRelativeTime(DateTime date) {
+  final diff = DateTime.now().difference(date);
+  if (diff.inMinutes < 2) return 'just now';
+  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+  if (diff.inHours < 24) return '${diff.inHours}h ago';
+  if (diff.inDays == 1) return 'yesterday';
+  if (diff.inDays < 7) return '${diff.inDays}d ago';
+  return '${date.day}/${date.month}/${date.year}';
 }
 
 class _ActionButton extends StatelessWidget {

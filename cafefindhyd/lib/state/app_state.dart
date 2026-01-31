@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../data/offers_repository.dart';
 import '../data/place_repository.dart';
 import '../data/review_repository.dart';
 import '../models/filter_state.dart';
 import '../models/place.dart';
+import '../models/place_offers.dart';
 import '../models/review.dart';
 import '../utils/filtering.dart';
 
@@ -17,6 +19,10 @@ final placeRepositoryProvider = Provider<PlaceRepository>((ref) {
 
 final reviewRepositoryProvider = Provider<ReviewRepository>((ref) {
   return ReviewRepository(firestore: ref.watch(firestoreProvider));
+});
+
+final offersRepositoryProvider = Provider<OffersRepository>((ref) {
+  return OffersRepository(firestore: ref.watch(firestoreProvider));
 });
 
 final placesProvider = FutureProvider<List<Place>>((ref) async {
@@ -84,4 +90,12 @@ final reviewsProvider = FutureProvider.family<List<Review>, String>((
 ) async {
   final repository = ref.watch(reviewRepositoryProvider);
   return repository.getReviewsForPlace(placeSlug);
+});
+
+final placeOffersProvider = StreamProvider.family<PlaceOffers?, String>((
+  ref,
+  placeId,
+) {
+  final repository = ref.watch(offersRepositoryProvider);
+  return repository.watchPlaceOffers(placeId);
 });
