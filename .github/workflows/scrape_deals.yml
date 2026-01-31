@@ -1,0 +1,46 @@
+name: Scrape deals
+
+on:
+  schedule:
+    - cron: "30 2 * * *" # daily 02:30 UTC
+  workflow_dispatch: {}
+
+defaults:
+  run:
+    working-directory: cafefindhyd
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    environment: dev
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Write Firebase service account
+        env:
+          FIREBASE_ADMINSDK_JSON: ${{ secrets.FIREBASE_ADMINSDK_JSON }}
+        run: |
+          mkdir -p /tmp/firebase
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          raw = os.environ["FIREBASE_ADMINSDK_JSON"]
+          json.loads(raw)  # validate JSON
+          Path("/tmp/firebase/sa.json").write_text(raw, encoding="utf-8")
+          PY
+
+      - name: Run scraper
+        run: python -m scripts.scraper.scraper --credentials /tmp/firebase/sa.json
